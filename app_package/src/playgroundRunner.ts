@@ -13,7 +13,11 @@ export function initializeBabylonApp(options: InitializeBabylonAppOptions) {
         console.log("No assets host URL provided");
     }
 
-    const canvas = options.canvas;
+    var canvas = options.canvas;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.id = "BabylonFluids";
+    
     const engine = new Engine(canvas);
     const scene = CreatePlaygroundScene(engine, canvas);
     engine.runRenderLoop(() => {
