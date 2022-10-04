@@ -1,5 +1,6 @@
 import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
+import { ObjectCollisionMatrix } from "cannon-es";
 
 class Playground {
     scene: BABYLON.Scene;
@@ -19,7 +20,17 @@ class Playground {
         // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
+        var lightShader = new BABYLON.ShaderMaterial("shader", this.scene, "./liquids", {
+            attributes: ["position", "normal", "uv"],
+            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
+        });
+        var monoShader = new BABYLON.ShaderMaterial("shader", this.scene, "./white", {
+            attributes: ["position", "normal", "uv"],
+            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
+        });
+
         var object = BABYLON.MeshBuilder.CreateTorusKnot("torusKnot", { radialSegments: 64, tubularSegments: 5, p: 2 }, this.scene);
+        object.material = monoShader;
 
         // setup environment
         const env = this.scene.createDefaultEnvironment();
@@ -29,7 +40,11 @@ class Playground {
     }
 }
 
-export function CreatePlaygroundScene(engine: BABYLON.Engine, canvas: HTMLCanvasElement): BABYLON.Scene {
+export function CreatePlayground(engine: BABYLON.Engine, canvas: HTMLCanvasElement): Playground {
     var playground =  new Playground(engine, canvas);
-    return playground.scene;
+    return playground;
+}
+
+export function RenderLoop(playground: Playground) {
+    playground.scene.render();
 }

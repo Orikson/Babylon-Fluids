@@ -1,5 +1,5 @@
 import { Engine } from "@babylonjs/core";
-import { CreatePlaygroundScene } from "./Playground/playground";
+import { CreatePlayground, RenderLoop } from "./Playground/playground";
 
 export interface InitializeBabylonAppOptions {
     canvas: HTMLCanvasElement;
@@ -19,9 +19,9 @@ export function initializeBabylonApp(options: InitializeBabylonAppOptions) {
     canvas.id = "BabylonFluids";
     
     const engine = new Engine(canvas);
-    const scene = CreatePlaygroundScene(engine, canvas);
+    const playground = CreatePlayground(engine, canvas);
     engine.runRenderLoop(() => {
-        scene.render();
+        RenderLoop(playground);
     });
     window.addEventListener("resize", () => {
         engine.resize();
