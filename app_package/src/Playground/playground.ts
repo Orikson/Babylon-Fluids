@@ -30,13 +30,17 @@ class Playground {
         });
 
         var object = BABYLON.MeshBuilder.CreateTorusKnot("torusKnot", { radialSegments: 64, tubularSegments: 5, p: 2 }, this.scene);
-        object.material = monoShader;
+        //object.material = monoShader;
 
         // setup environment
         const env = this.scene.createDefaultEnvironment();
       
         // here we add XR support
-        const xr = await this.scene.createDefaultXRExperienceAsync({});
+        const xr = await this.scene.createDefaultXRExperienceAsync({
+            uiOptions: {
+                sessionMode: "immersive-ar",
+            },
+        });
     }
 }
 
