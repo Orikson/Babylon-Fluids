@@ -15,7 +15,7 @@ class Playground {
 
         // This creates and positions a free camera (non-mesh)
         var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this.scene);
-        camera.setTarget(objPos);
+        camera.setTarget(BABYLON.Vector3.Zero());
         camera.attachControl(canvas, true);
 
         var lightShader = new BABYLON.ShaderMaterial("shader", this.scene, "./liquids", {
