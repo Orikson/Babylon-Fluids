@@ -11,13 +11,11 @@ class Playground {
     }
 
     async CreateScene(engine: BABYLON.Engine, canvas: HTMLCanvasElement) {
+        var objPos = new BABYLON.Vector3(0, 20, 0);
+
         // This creates and positions a free camera (non-mesh)
         var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this.scene);
-
-        // This targets the camera to scene origin
-        camera.setTarget(BABYLON.Vector3.Zero());
-
-        // This attaches the camera to the canvas
+        camera.setTarget(objPos);
         camera.attachControl(canvas, true);
 
         var lightShader = new BABYLON.ShaderMaterial("shader", this.scene, "./liquids", {
@@ -34,7 +32,7 @@ class Playground {
 
         var tR = 0.25;
         var object = BABYLON.MeshBuilder.CreateTorusKnot("torusKnot", { radius: tR, tube: tR/4, radialSegments: 64, tubularSegments: 5, p: 4 }, this.scene);
-        object.position.y += 5;
+        object.position = objPos;
         //object.material = monoShader;
 
         // setup environment
