@@ -28,12 +28,14 @@ class Playground {
             attributes: ["position", "normal", "uv"],
             uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
         });
-
+        
+        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), this.scene);
+        light.intensity = 0.4;
         var object = BABYLON.MeshBuilder.CreateTorusKnot("torusKnot", { radialSegments: 64, tubularSegments: 5, p: 2 }, this.scene);
         //object.material = monoShader;
 
         // setup environment
-        const env = this.scene.createDefaultEnvironment();
+        //const env = this.scene.createDefaultEnvironment();
       
         // here we add XR support
         const xr = await this.scene.createDefaultXRExperienceAsync({
