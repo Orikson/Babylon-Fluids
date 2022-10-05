@@ -35,7 +35,7 @@ class Playground {
         camera.setTarget(BABYLON.Vector3.Zero());
         camera.attachControl(canvas, true);
         
-        var objPos = new BABYLON.Vector3(0, 0, 0);
+        var objPos = new BABYLON.Vector3(0, 1, 0);
 
         var lightShader = new BABYLON.ShaderMaterial("shader", this.scene, "./liquids", {
             attributes: ["position", "normal", "uv"],
