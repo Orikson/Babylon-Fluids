@@ -27,7 +27,56 @@ class Playground {
             const xr = await this.scene.createDefaultXRExperienceAsync({
                 uiOptions: {
                     sessionMode: "immersive-ar",
+                    optionalFeatures: ["hit-test", "anchors"]
                 },
+            });
+            
+            // optional features manager
+            const fm = xr.baseExperience.featuresManager;
+            const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, 'latest') as BABYLON.WebXRHitTest;
+            const anchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest") as BABYLON.WebXRAnchorSystem;
+            const planeDetector = fm.enableFeature(BABYLON.WebXRPlaneDetector, "latest") as BABYLON.WebXRPlaneDetector;
+            const domOverlayFeature = fm.enableFeature(BABYLON.WebXRDomOverlay, "latest", { element: ".dom-overlay-container" }, undefined, false) as BABYLON.WebXRDomOverlay;
+            const teleportation = fm.enableFeature(BABYLON.WebXRFeatureName.TELEPORTATION, "stable", {
+                xrInput: xr.input,
+                floorMeshes: [],
+                timeToTeleport: 5000,
+                useMainComponentOnly: true,
+            });
+
+            xr.baseExperience.onStateChangedObservable.add((webXRState) => {
+                switch (webXRState) {
+                    case BABYLON.WebXRState.ENTERING_XR:
+                    case BABYLON.WebXRState.IN_XR:
+                    // domOverlayType will be null when not supported.
+                    console.log("overlay type:", domOverlayFeature.domOverlayType);
+                    break;
+                }
+            });
+
+            // on ray hit (with real world geometry)
+            hitTest.onHitTestResultObservable.add((results) => { });
+
+            // anchor updates
+            anchorSystem.onAnchorAddedObservable.add((anchor) => {
+                // ... do what you want with the anchor after it was added
+            });
+            anchorSystem.onAnchorRemovedObservable.add((anchor) => {
+                // ... do what you want with the anchor after it was removed
+            });
+            anchorSystem.onAnchorUpdatedObservable.add((anchor) => {
+                // ... do what you want with the anchor after it was updated
+            });
+
+            // plane detector updates
+            planeDetector.onPlaneAddedObservable.add((plane) => {
+                // ... do what you want with the plane after it was added
+            });
+            planeDetector.onPlaneRemovedObservable.add((plane) => {
+                // ... do what you want with the plane after it was removed
+            });
+            planeDetector.onPlaneUpdatedObservable.add((plane) => {
+                // ... do what you want with the plane after it was updated
             });
         }
         
