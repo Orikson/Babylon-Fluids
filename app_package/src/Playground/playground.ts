@@ -18,6 +18,10 @@ class Playground {
     }
 
     async CreateScene(engine: BABYLON.Engine, canvas: HTMLCanvasElement) {
+        var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 0, -10), this.scene);
+        camera.setTarget(BABYLON.Vector3.Zero());
+        camera.attachControl(canvas, true);
+        
         // xr manager
         this.XRenabled = await BABYLON.WebXRSessionManager.IsSessionSupportedAsync('immersive-ar');
         
@@ -27,12 +31,12 @@ class Playground {
             const xr = await this.scene.createDefaultXRExperienceAsync({
                 uiOptions: {
                     sessionMode: "immersive-ar",
-                    optionalFeatures: ["hit-test", "anchors"]
+//                    optionalFeatures: ["hit-test", "anchors"]
                 },
             });
             
             // optional features manager
-            const fm = xr.baseExperience.featuresManager;
+/*            const fm = xr.baseExperience.featuresManager;
             const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, 'latest') as BABYLON.WebXRHitTest;
             const anchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest") as BABYLON.WebXRAnchorSystem;
             const planeDetector = fm.enableFeature(BABYLON.WebXRPlaneDetector, "latest") as BABYLON.WebXRPlaneDetector;
@@ -78,11 +82,8 @@ class Playground {
             planeDetector.onPlaneUpdatedObservable.add((plane) => {
                 // ... do what you want with the plane after it was updated
             });
+*/
         }
-        
-        var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 0, -10), this.scene);
-        camera.setTarget(BABYLON.Vector3.Zero());
-        camera.attachControl(canvas, true);
         
         var objPos = new BABYLON.Vector3(0, 1, 0);
 
