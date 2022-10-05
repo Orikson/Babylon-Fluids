@@ -34,6 +34,7 @@ class Playground {
 
         var tR = 0.25;
         var object = BABYLON.MeshBuilder.CreateTorusKnot("torusKnot", { radius: tR, tube: tR/4, radialSegments: 64, tubularSegments: 5, p: 4 }, this.scene);
+        object.position.y += 5;
         //object.material = monoShader;
 
         // setup environment
