@@ -11,7 +11,7 @@ class Playground {
     }
 
     async CreateScene(engine: BABYLON.Engine, canvas: HTMLCanvasElement) {
-        var objPos = new BABYLON.Vector3(0, 7, 0);
+        var objPos = new BABYLON.Vector3(0, 0, 0);
 
         // This creates and positions a free camera (non-mesh)
         var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this.scene);
