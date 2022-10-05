@@ -40,7 +40,7 @@ class Playground {
         // here we add XR support
         const xr = await this.scene.createDefaultXRExperienceAsync({
             uiOptions: {
-                //sessionMode: "immersive-ar",
+                sessionMode: "immersive-ar",
             },
         });
     }
