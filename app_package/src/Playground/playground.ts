@@ -31,15 +31,15 @@ class Playground {
             const xr = await this.scene.createDefaultXRExperienceAsync({
                 uiOptions: {
                     sessionMode: "immersive-ar",
-//                    optionalFeatures: ["hit-test", "anchors"]
+                    optionalFeatures: ["hit-test", "anchors"]
                 },
             });
             
             // optional features manager
-/*            const fm = xr.baseExperience.featuresManager;
+            const fm = xr.baseExperience.featuresManager;
             const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, 'latest') as BABYLON.WebXRHitTest;
             const anchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest") as BABYLON.WebXRAnchorSystem;
-            const planeDetector = fm.enableFeature(BABYLON.WebXRPlaneDetector, "latest") as BABYLON.WebXRPlaneDetector;
+/*            const planeDetector = fm.enableFeature(BABYLON.WebXRPlaneDetector, "latest") as BABYLON.WebXRPlaneDetector;
             const domOverlayFeature = fm.enableFeature(BABYLON.WebXRDomOverlay, "latest", { element: ".dom-overlay-container" }, undefined, false) as BABYLON.WebXRDomOverlay;
             const teleportation = fm.enableFeature(BABYLON.WebXRFeatureName.TELEPORTATION, "stable", {
                 xrInput: xr.input,
@@ -57,9 +57,25 @@ class Playground {
                     break;
                 }
             });
-
+*/
             // on ray hit (with real world geometry)
-            hitTest.onHitTestResultObservable.add((results) => { });
+            // a dot to show in the found position
+            const dot = BABYLON.MeshBuilder.CreateSphere(
+                "dot",
+                {
+                    diameter: 0.05,
+                },
+                this.scene,
+            );
+            dot.isVisible = false;
+            hitTest.onHitTestResultObservable.add((results) => {
+                if (results.length) {
+                    dot.isVisible = true;
+                    results[0].transformationMatrix.decompose(dot.scaling, dot.rotationQuaternion as BABYLON.Quaternion, dot.position);
+                } else {
+                    dot.isVisible = false;
+                }
+            });
 
             // anchor updates
             anchorSystem.onAnchorAddedObservable.add((anchor) => {
@@ -71,7 +87,7 @@ class Playground {
             anchorSystem.onAnchorUpdatedObservable.add((anchor) => {
                 // ... do what you want with the anchor after it was updated
             });
-
+/*
             // plane detector updates
             planeDetector.onPlaneAddedObservable.add((plane) => {
                 // ... do what you want with the plane after it was added
