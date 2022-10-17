@@ -39,8 +39,8 @@ class Playground {
             const fm = xr.baseExperience.featuresManager;
             const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, 'latest') as BABYLON.WebXRHitTest;
             const anchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest") as BABYLON.WebXRAnchorSystem;
-/*            const planeDetector = fm.enableFeature(BABYLON.WebXRPlaneDetector, "latest") as BABYLON.WebXRPlaneDetector;
-            const domOverlayFeature = fm.enableFeature(BABYLON.WebXRDomOverlay, "latest", { element: ".dom-overlay-container" }, undefined, false) as BABYLON.WebXRDomOverlay;
+            const planeDetector = fm.enableFeature(BABYLON.WebXRPlaneDetector, "latest") as BABYLON.WebXRPlaneDetector;
+/*            const domOverlayFeature = fm.enableFeature(BABYLON.WebXRDomOverlay, "latest", { element: ".dom-overlay-container" }, undefined, false) as BABYLON.WebXRDomOverlay;
             const teleportation = fm.enableFeature(BABYLON.WebXRFeatureName.TELEPORTATION, "stable", {
                 xrInput: xr.input,
                 floorMeshes: [],
@@ -63,7 +63,7 @@ class Playground {
             const dot = BABYLON.MeshBuilder.CreateSphere(
                 "dot",
                 {
-                    diameter: 0.05,
+                    diameter: 0.01,
                 },
                 this.scene,
             );
@@ -107,18 +107,21 @@ class Playground {
             attributes: ["position", "normal", "uv"],
             uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
         });
-        var monoShader = new BABYLON.ShaderMaterial("shader", this.scene, "./white", {
+        var monoShader = new BABYLON.ShaderMaterial("shader", this.scene, {
+            vertexElement: "whiteVertex",
+            fragmentElement: "whiteFragment"
+        }, {
             attributes: ["position", "normal", "uv"],
             uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
         });
         
-        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), this.scene);
-        light.intensity = 0.4;
+        //var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), this.scene);
+        //light.intensity = 0.4;
 
         var tR = 0.25;
         var object = BABYLON.MeshBuilder.CreateTorusKnot("torusKnot", { radius: tR, tube: tR/4, radialSegments: 64, tubularSegments: 5, p: 4 }, this.scene);
         object.position = objPos;
-        //object.material = monoShader;
+        object.material = monoShader;
 
         // setup environment
         //const env = this.scene.createDefaultEnvironment();
