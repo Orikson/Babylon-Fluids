@@ -2,45 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8">
-      <title>Babylon Fluids</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script type="application/vertexShader" id="whiteVertex">
-      #ifdef GL_ES
-        precision highp float;
-      #endif
-  
-      // Attributes
-      attribute vec3 position;
-      attribute vec2 uv;
-  
-      // Uniforms
-      uniform mat4 worldViewProjection;
-  
-      // Normal
-      varying vec2 vUV;
-  
-      void main(void) {
-        gl_Position = worldViewProjection * vec4(position, 1.0);
-    
-        vUV = uv;
-      }
-    </script>
-  
-    <script type="application/fragmentShader" id="whiteFragment">
-      #ifdef GL_ES
-        precision mediump float;
-      #endif
-  
-      varying vec2 vUV;
-  
-      uniform sampler2D textureSampler;
-  
-      void main(void) {
-        gl_FragColor = texture2D(textureSampler, vUV);
-      }
-    </script>
-    
-    <script defer src="bundle.js"></script>
-  </head>
-  <body></body>
+    <title>Babylon Fluids</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"><script defer src="bundle.js"></script></head>
+  <body>
+  </body>
 </html>

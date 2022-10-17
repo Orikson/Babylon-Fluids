@@ -1,18 +1,53 @@
 import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
 import { ObjectCollisionMatrix } from "cannon-es";
+import * as WHITE from "./shaders/white";
+import * as LIQUID from "./shaders/liquids";
+import { float, Vector3 } from "@babylonjs/core";
 
 class Playground {
     scene: BABYLON.Scene;
+    engine: BABYLON.Engine;
 
     // xr enabled
     XRenabled: boolean;
     sessionManager: BABYLON.WebXRSessionManager;
+
+    // scene contents
+    angle: float;
+    lightShader: BABYLON.ShaderMaterial;
+    monoShader: BABYLON.ShaderMaterial;
+    lightSource: BABYLON.Mesh;
+    objPos: BABYLON.Vector3;
     
     constructor(engine: BABYLON.Engine, canvas: HTMLCanvasElement) {
+        LIQUID.setup();
+        WHITE.setup();
+
         this.scene = new BABYLON.Scene(engine);
+        this.engine = engine;
         this.sessionManager = new BABYLON.WebXRSessionManager(this.scene);
         this.XRenabled = false;
+
+        this.angle = 0;
+        this.lightShader = new BABYLON.ShaderMaterial("shader", this.scene, {
+            vertexElement: "liquids",
+            fragmentElement: "liquids"
+        }, {
+            attributes: ["position", "normal", "uv"],
+            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
+        });
+        this.monoShader = new BABYLON.ShaderMaterial("shader", this.scene, {
+            vertexElement: "white",
+            fragmentElement: "white"
+        }, {
+            attributes: ["position", "normal", "uv"],
+            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
+        });
+
+        this.lightSource = BABYLON.MeshBuilder.CreateSphere("sphere1", { diameter: 0.25 }, this.scene);
+
+        this.objPos = new BABYLON.Vector3(0, 1, 0);
         
         this.CreateScene(engine, canvas);
     }
@@ -100,31 +135,25 @@ class Playground {
             });
 */
         }
-        
-        var objPos = new BABYLON.Vector3(0, 1, 0);
 
-        var lightShader = new BABYLON.ShaderMaterial("shader", this.scene, "./liquids", {
-            attributes: ["position", "normal", "uv"],
-            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
-        });
-        var monoShader = new BABYLON.ShaderMaterial("shader", this.scene, {
-            vertexElement: "whiteVertex",
-            fragmentElement: "whiteFragment"
-        }, {
-            attributes: ["position", "normal", "uv"],
-            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
-        });
-        
-        //var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), this.scene);
-        //light.intensity = 0.4;
+        this.lightShader.setVector3("lightPos", new Vector3(5, 1, 5));
 
         var tR = 0.25;
         var object = BABYLON.MeshBuilder.CreateTorusKnot("torusKnot", { radius: tR, tube: tR/4, radialSegments: 64, tubularSegments: 5, p: 4 }, this.scene);
-        object.position = objPos;
-        object.material = monoShader;
+        object.position = this.objPos;
+        object.material = this.lightShader;
 
-        // setup environment
-        //const env = this.scene.createDefaultEnvironment();
+        var displacement = new Vector3(1, 0.2, 1);
+        this.lightSource.position = this.objPos.add(displacement);
+        this.lightSource.material = this.monoShader;
+    }
+
+    update() {
+        this.angle += this.engine.getDeltaTime()/5000;
+        var displacement = new Vector3(1*Math.sin(this.angle), 0.2, 1*Math.cos(this.angle));
+        displacement = displacement.add(this.objPos);
+        this.lightShader.setVector3("lightPos", displacement);
+        this.lightSource.position = displacement;
     }
 }
 
@@ -135,4 +164,5 @@ export function CreatePlayground(engine: BABYLON.Engine, canvas: HTMLCanvasEleme
 
 export function RenderLoop(playground: Playground) {
     playground.scene.render();
+    playground.update();
 }
