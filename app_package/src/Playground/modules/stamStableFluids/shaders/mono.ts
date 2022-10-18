@@ -2,7 +2,7 @@ import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
 
 export function setup() {
-    BABYLON.Effect.ShadersStore["whiteVertexShader"] = `
+    BABYLON.Effect.ShadersStore["monoVertexShader"] = `
     precision highp float;
 
     // Attributes
@@ -28,7 +28,7 @@ export function setup() {
     }
     `;
 
-    BABYLON.Effect.ShadersStore["whiteFragmentShader"] = `
+    BABYLON.Effect.ShadersStore["monoFragmentShader"] = `
     precision highp float;
 
     // Varying

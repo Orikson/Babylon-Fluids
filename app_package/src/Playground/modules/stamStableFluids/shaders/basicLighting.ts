@@ -2,7 +2,7 @@ import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
 
 export function setup() {
-    BABYLON.Effect.ShadersStore["liquidsVertexShader"] = `
+    BABYLON.Effect.ShadersStore["basicLightingVertexShader"] = `
     precision highp float;
 
     // Attributes
@@ -28,7 +28,7 @@ export function setup() {
     }
     `;
 
-    BABYLON.Effect.ShadersStore["liquidsFragmentShader"] = `
+    BABYLON.Effect.ShadersStore["basicLightingFragmentShader"] = `
     precision highp float;
 
     // Varying
