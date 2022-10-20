@@ -69,7 +69,7 @@ export class StamStableFluids {
 
     // ----- Variables -----
     angle: number = 0;                              // angle of rotation of light around torus
-    objPos = new BABYLON.Vector3(0.5, 0, 0);          // position of torus
+    objPos = new BABYLON.Vector3(0, 0, 1);          // position of torus
     displacement = new BABYLON.Vector3(1, 0.2, 1);  // displacement of light from position of torus
 
     constructor(scene: BABYLON.Scene, canvas: HTMLCanvasElement, xr?: BABYLON.WebXRDefaultExperience) {
