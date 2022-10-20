@@ -40,7 +40,7 @@ export class SceneObjects {
     load_xrFeatures() {
         this.xrObject.baseExperience.sessionManager.onXRFrameObservable.addOnce(() => {
             this.stam.onLoad();
-            // ... do what you want with the scene after the first XR frame loads
+            console.log("onload");
         })
 
         const fm = this.xrObject.baseExperience.featuresManager;

@@ -48,6 +48,7 @@ class Playground {
                     optionalFeatures: ["hit-test", "anchors"]
                 },
             });
+            this.xrObject.baseExperience.sessionManager.setReferenceSpaceTypeAsync("unbounded");
         }
     }
 }
