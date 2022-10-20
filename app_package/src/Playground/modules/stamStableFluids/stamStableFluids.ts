@@ -99,6 +99,7 @@ export class StamStableFluids {
             this.objPos = this.cameraXR.getFrontPosition(0.5);
             this.torus.position = this.objPos;
             this.light.position = this.objPos.add(this.displacement);
+            console.log(this.objPos);
         }
     }
 
