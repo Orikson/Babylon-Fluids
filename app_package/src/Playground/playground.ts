@@ -48,7 +48,7 @@ class Playground {
                     optionalFeatures: ["hit-test", "anchors"]
                 },
             });
-            this.xrObject.baseExperience.sessionManager.setReferenceSpaceTypeAsync("unbounded");
+            await this.xrObject.baseExperience.sessionManager.setReferenceSpaceTypeAsync("unbounded");
         }
     }
 }
