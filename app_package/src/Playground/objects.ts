@@ -34,7 +34,7 @@ export class SceneObjects {
     }
 
     load_sceneObjects() {
-        this.stam = new MODULES.StamStableFluids(this.scene, this.canvas);
+        this.stam = new MODULES.StamStableFluids(this.scene, this.canvas, this.xrObject);
     }
 
     load_xrFeatures() {
