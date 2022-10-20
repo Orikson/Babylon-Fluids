@@ -14,6 +14,7 @@ class Playground {
     xrEnabled: boolean;
     sessionManager: BABYLON.WebXRSessionManager;
     xrObject: BABYLON.WebXRDefaultExperience;
+    xrReferenceSpace: XRReferenceSpace;
 
     // scene objects
     objects: OBJECTS.SceneObjects;
@@ -48,7 +49,7 @@ class Playground {
                     optionalFeatures: ["hit-test", "anchors"]
                 },
             });
-            await this.xrObject.baseExperience.sessionManager.setReferenceSpaceTypeAsync("unbounded");
+            this.xrReferenceSpace = await this.xrObject.baseExperience.sessionManager.setReferenceSpaceTypeAsync("unbounded");
         }
     }
 }
