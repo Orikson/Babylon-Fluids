@@ -38,11 +38,6 @@ export class SceneObjects {
     }
 
     load_xrFeatures() {
-        this.xrObject.baseExperience.sessionManager.onXRFrameObservable.addOnce(() => {
-            this.stam.onLoad();
-            console.log("onload");
-        })
-
         const fm = this.xrObject.baseExperience.featuresManager;
         const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, 'latest') as BABYLON.WebXRHitTest;
         const anchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest") as BABYLON.WebXRAnchorSystem;
