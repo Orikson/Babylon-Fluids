@@ -38,9 +38,15 @@ export class SceneObjects {
     }
 
     load_xrFeatures() {
+        this.xrObject.baseExperience.sessionManager.onXRFrameObservable.addOnce(() => {
+            this.stam.onLoad();
+            // ... do what you want with the scene after the first XR frame loads
+        })
+
         const fm = this.xrObject.baseExperience.featuresManager;
         const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, 'latest') as BABYLON.WebXRHitTest;
         const anchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest") as BABYLON.WebXRAnchorSystem;
+        // plane detector appears to cause problems on the Hololens 2; this is something to look into
         //const planeDetector = fm.enableFeature(BABYLON.WebXRPlaneDetector, "latest") as BABYLON.WebXRPlaneDetector;
 
         // setup hit test
