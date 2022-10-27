@@ -1,7 +1,7 @@
 import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
 
-export function setup() {
+export function setup2D() {
     BABYLON.Effect.ShadersStore["renderVertexShader"] = `
     
     `;

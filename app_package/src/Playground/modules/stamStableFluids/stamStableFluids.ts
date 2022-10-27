@@ -3,9 +3,11 @@ import * as BABYLON from "@babylonjs/core"
 import "@babylonjs/loaders";
 
 // Shader imports
-import * as MONO from "./shaders/mono"
-import * as BASIC from "./shaders/basicLighting"
 import * as RENDER from "./shaders/render"
+import * as STAM2D_FUNCS from "./shaders/2D/funcs"
+import * as STAM2D_HEADERS from "./shaders/2D/headers"
+import * as STAM2D_MATH from "./shaders/2D/math"
+import * as STAM2D_STEPS from "./shaders/2D/steps"
 
 // Util
 import * as UTIL from "../../utility/util"
@@ -18,34 +20,11 @@ export function hadamard(v1: BABYLON.Vector3, v2: BABYLON.Vector3) {
 }
 
 /**
- * Handles bounds of fluid and all relevant textures
- */
-class StamFluid {
-    // dimensions
-    w: number; l: number; h: number;
-
-    // textures
-    textures: Array<BABYLON.RenderTargetTexture>;
-
-    // constructs texture set from dimensions
-    // all textures are dimensions width by height, and there are l textures
-    // all shaders for rendering accessed by RENDER import
-    // all shaders for fluid solving accessed by FLUID import
-    constructor(w: number, l: number, h: number) {
-        this.w = w; this.l = l; this.h = h;
-    }
-
-    render() {
-
-    }
-}
-
-/**
- * Implements Stam's stable fluids algorithm from NVIDIA's GPU Gems 3, Chapter 30
+ * Implements Stam's stable fluids algorithm from NVIDIA's GPU Gems 1, Chapter 35
  * https://www.cs.cmu.edu/~kmcrane/Projects/GPUFluid/paper.pdf
  * Most interesting computation occurs in relevant shaders; this class merely manages the processing of this pipeline (such as the order of shaders, storage of textures, etc.)
  */
-export class StamStableFluids {
+export class StamStableFluids2D {
     // Babylon run-time objects
     scene: BABYLON.Scene;
     canvas: HTMLCanvasElement;
@@ -55,23 +34,29 @@ export class StamStableFluids {
     xrObject: BABYLON.WebXRDefaultExperience;
 
     // scene objects
-    // ----- Shaders -----
-    basicShading: BABYLON.ShaderMaterial;           // basic lighting (phong, direct, ambient)
-    monoPointLight: BABYLON.ShaderMaterial;         // monochrome coloration for point lights (where all points have equal brightness)
+    // ----- Shaders/Textures -----
+    finalTex: UTIL.PlaneKernel;
+    velTex: UTIL.PingPongPlaneKernel;
+    tmpTex: UTIL.PlaneKernel;
+    qntTex: UTIL.PingPongPlaneKernel;
+    prsTex: UTIL.PingPongPlaneKernel;
 
     // ----- Objects -----
-    torus: BABYLON.Mesh;                            // torus
-    light: BABYLON.Mesh;                            // sperical point light
-
+    renderPlane: BABYLON.Mesh;
+    
     // ----- Cameras -----
     cameraXR: BABYLON.WebXRCamera;
     cameraFR: BABYLON.FreeCamera;
 
     // ----- Variables -----
-    angle: number = 0;                              // angle of rotation of light around torus
-    objPos = new BABYLON.Vector3(0, 0, 1);          // position of torus
-    displacement = new BABYLON.Vector3(1, 0.2, 1);  // displacement of light from position of torus
-
+    runTime: number;
+    
+    /**
+     * Constructs a new Stam Stable Fluids object
+     * @param scene 
+     * @param canvas 
+     * @param xr 
+     */
     constructor(scene: BABYLON.Scene, canvas: HTMLCanvasElement, xr?: BABYLON.WebXRDefaultExperience) {
         this.scene = scene;
         this.canvas = canvas;
@@ -83,57 +68,70 @@ export class StamStableFluids {
 
         this.load_shaderObjects();
         this.load_sceneObjects();
+
+        this.runTime = 0;
     }
 
-    update() {
-        this.angle += this.scene.getEngine().getDeltaTime()/5000;
-        var displacement = hadamard(this.displacement, new BABYLON.Vector3(Math.sin(this.angle), 1, Math.cos(this.angle)));
+    // ----- Computation kernels -----
+    step_advection() {
         
-        displacement = displacement.add(this.objPos);
-        this.basicShading.setVector3("lightPos", displacement);
-        this.light.position = displacement;
+    }
+
+    step_external() {
+
+    }
+
+    step_pressure() {
+
+    }
+
+    /**
+     * Updates all objects and all textures, and performs all auxiliary scene renders
+     */
+    update() {
+        //this.exampleShader.setFloat("time", this.runTime);
+        //this.exampleKernel.render();
+
+
+        
+        this.runTime += this.scene.getEngine().getDeltaTime();
     }
 
     load_sceneObjects() {
         if (this.xrObject != undefined) {
-            this.cameraXR = new BABYLON.WebXRCamera("camera1", this.scene, this.xrObject.baseExperience.sessionManager);
+            this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
             this.cameraXR.attachControl(this.canvas, true);
         } else {
-            this.cameraFR = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 0, -10), this.scene);
+            this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(0, 0, -7), this.scene);
             this.cameraFR.setTarget(BABYLON.Vector3.Zero());
             this.cameraFR.attachControl(this.canvas, true);
         }
         
-        this.basicShading.setVector3("lightPos", this.objPos.add(this.displacement));
-
-        var tR = 0.25;
-        this.torus = BABYLON.MeshBuilder.CreateTorusKnot("torus", { radius: tR, tube: tR/4, radialSegments: 64, tubularSegments: 5, p: 4 }, this.scene);
-        this.torus.position = this.objPos;
-        this.torus.material = this.basicShading;
-
-        this.light = BABYLON.MeshBuilder.CreateSphere("light", { diameter: tR/3 }, this.scene);
-        this.light.position = this.objPos.add(this.displacement);
-        this.light.material = this.monoPointLight;
+        this.renderPlane = BABYLON.MeshBuilder.CreatePlane("render plane", { width: 5, height: 5 }, this.scene);
+        this.renderPlane.material = this.finalTex.genEmissiveMat("final");
     }
 
     load_shaderObjects() {
-        MONO.setup();
-        BASIC.setup();
-        RENDER.setup();
+        RENDER.setup2D();
 
-        this.basicShading = new BABYLON.ShaderMaterial("shader", this.scene, {
-            vertexElement: "basicLighting",
-            fragmentElement: "basicLighting"
-        }, {
-            attributes: ["position", "normal", "uv"],
-            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
-        });
-        this.monoPointLight = new BABYLON.ShaderMaterial("shader", this.scene, {
-            vertexElement: "mono",
-            fragmentElement: "mono"
-        }, {
-            attributes: ["position", "normal", "uv"],
-            uniforms: ["world", "worldView", "worldViewProjection", "view", "projection", "lightPos"],
-        });
+        // the order is important for in-shader import order
+        STAM2D_HEADERS.setup();
+        STAM2D_FUNCS.setup();
+        STAM2D_MATH.setup();
+        STAM2D_STEPS.setup();
+
+        // setup kernels
+        // each kernel should have a write texture and a set of read textures
+        // each render call should render to the write texture
     }
+}
+
+
+/**
+ * Implements Stam's stable fluids algorithm from NVIDIA's GPU Gems 3, Chapter 30
+ * https://www.cs.cmu.edu/~kmcrane/Projects/GPUFluid/paper.pdf
+ * Most interesting computation occurs in relevant shaders; this class merely manages the processing of this pipeline (such as the order of shaders, storage of textures, etc.)
+ */
+export class StamStableFluids3D {
+
 }

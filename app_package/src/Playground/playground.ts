@@ -29,7 +29,6 @@ class Playground {
         
         this.load_scene();
         this.objects = new OBJECTS.SceneObjects(this.scene, this.canvas, (this.xrEnabled ? this.xrObject : undefined));
-        console.log(this.objects);
     }
 
     render() {
@@ -60,6 +59,6 @@ export function CreatePlayground(engine: BABYLON.Engine, canvas: HTMLCanvasEleme
 }
 
 export function RenderLoop(playground: Playground) {
-    playground.scene.render();
     playground.update();
+    playground.render();
 }
