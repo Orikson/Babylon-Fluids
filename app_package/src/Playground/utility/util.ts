@@ -132,8 +132,13 @@ export class PingPongPlaneKernel {
     }
 
     // ----- Get Current Material -----
-    getEmissiveMat():BABYLON.StandardMaterial {
+    getEmissiveMat(): BABYLON.StandardMaterial {
         return (this.toggle ? this.materialA : this.materialB);
+    }
+
+    // ----- Get Current Texture -----
+    getTexture(): BABYLON.RenderTargetTexture {
+        return (this.toggle ? this.kernelA.texture : this.kernelB.texture);
     }
 
     // ----- Render -----
@@ -290,4 +295,186 @@ export class SingleBoxKernel {
     plane: BABYLON.Mesh;
     shader: BABYLON.ShaderMaterial;
     texture: BABYLON.RenderTargetTexture;
+}
+
+// attempts to replicate OpenGL FBOs
+// instead of having compiled shaders that can be used for all FBOs, each FBO stores a set of shaders
+// this does result in duplicate shaders, but because shaders are compiled to each scene, this is a necessary action if multiple shaders want to be used for a single FBO
+export class PlaneFBO {
+    // ----- Scenes -----
+    mainScene: BABYLON.Scene;
+    renderScene: BABYLON.Scene;
+    
+    // ----- Shader storage -----
+    shaders: BABYLON.ShaderMaterial[];
+    activeShader: BABYLON.ShaderMaterial;
+
+    // ----- Render objects -----
+    camera: BABYLON.ArcRotateCamera;
+    plane: BABYLON.Mesh;
+    texture: BABYLON.RenderTargetTexture;
+
+    // ----- Miscellaneous -----
+    name: string;
+
+    // ----- Constructor -----
+    constructor(name: string, dimensions: { width: number, height: number }, scene: BABYLON.Scene) {
+        this.name = name;
+        this.shaders = [];
+
+        // scenes
+        this.mainScene = scene;
+        this.renderScene = new BABYLON.Scene(this.mainScene.getEngine());
+
+        // render objects
+        let w = dimensions.width;
+        let h = dimensions.height;
+
+        var renderCamera = new BABYLON.ArcRotateCamera(name + "Camera", -PI/2., 0, 5, new BABYLON.Vector3(0, 0, 0), this.renderScene);
+		renderCamera.setTarget(BABYLON.Vector3.Zero());
+		renderCamera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
+		renderCamera.orthoTop = 5;
+		renderCamera.orthoBottom = -5;
+		renderCamera.orthoLeft = -5;
+		renderCamera.orthoRight = 5;
+        this.camera = renderCamera;
+
+		var renderPlane = BABYLON.MeshBuilder.CreateGround(name + "Plane", { width: 10, height: 10 }, this.renderScene);
+        this.plane = renderPlane;
+
+        this.texture = new BABYLON.RenderTargetTexture(name, { width: w, height: h }, this.renderScene, undefined, undefined, 2, undefined, undefined, undefined, undefined, undefined, 5);
+        this.texture.activeCamera = this.camera;
+        this.texture.renderList?.push(this.plane);
+
+        this.renderScene.customRenderTargets.push(this.texture);
+    }
+
+    // ----- Add shader -----
+    addShader(shaderPath: any, options: any): number {
+        // returns index of shader in shader storage
+        var shader = new BABYLON.ShaderMaterial(
+            this.name + "_shader" + this.shaders.length,
+            this.renderScene,
+            shaderPath,
+            options
+        );
+        return this.shaders.push(shader) - 1;
+    }
+
+    // ----- Set shader -----
+    setActiveShader(index: number) {
+        // sets the active shader and updates relevant materials
+        if (index >= this.shaders.length || index < 0) return;
+
+        // update render target material
+        this.texture.setMaterialForRendering(this.plane, this.shaders[index]);
+
+        // update active shader
+        this.activeShader = this.shaders[index];
+    }
+
+    // ----- Render -----
+    render() {
+        this.renderScene.render();
+    }
+
+    // ----- Update shader constants -----
+    setFloat(name: string, float: number) {
+        this.activeShader.setFloat(name, float);
+    }
+    setVec2(name: string, vec2: BABYLON.Vector2) {
+        this.activeShader.setVector2(name, vec2);
+    }
+    setVec3(name: string, vec3: BABYLON.Vector3) {
+        this.activeShader.setVector3(name, vec3);
+    }
+    setVec4(name: string, vec4: BABYLON.Vector4) {
+        this.activeShader.setVector4(name, vec4);
+    }
+    setTexture(name: string, texture: BABYLON.BaseTexture) {
+        this.activeShader.setTexture(name, texture);
+    }
+
+    // ----- Get mat -----
+    genEmissiveMat(name: string): BABYLON.StandardMaterial {
+		var mat = new BABYLON.StandardMaterial(name, this.mainScene);
+		mat.emissiveTexture = this.texture;
+        mat.emissiveTexture.updateSamplingMode(4);
+        mat.disableLighting = true;
+        return mat;
+    }
+}
+
+// ping pong FBO
+export class PingPongPlaneFBO {
+    // ----- FBOs -----
+    FBOA: PlaneFBO;
+    FBOB: PlaneFBO;
+    currentFBO: PlaneFBO;
+    current: boolean;
+
+    // ----- Materials -----
+    FBOA_mat: BABYLON.StandardMaterial;
+    FBOB_mat: BABYLON.StandardMaterial;
+
+    // ----- Constructor -----
+    constructor(name: string, dimensions: { width: number, height: number }, scene: BABYLON.Scene) {
+        this.FBOA = new PlaneFBO(name + "_A", dimensions, scene);
+        this.FBOB = new PlaneFBO(name + "_B", dimensions, scene);
+        this.currentFBO = this.FBOA;
+        this.current = true;
+        this.FBOA_mat = this.FBOA.genEmissiveMat("mat_A");
+        this.FBOB_mat = this.FBOB.genEmissiveMat("mat_B");
+    }
+
+    // ----- Add shader -----
+    addShader(shaderPath: any, options: any): number {
+        this.FBOA.addShader(shaderPath, options);
+        return this.FBOB.addShader(shaderPath, options);
+    }
+
+    // ----- Set active shader -----
+    setActiveShader(index: number) {
+        this.currentFBO.setActiveShader(index);
+    }
+    
+    // ----- Update shader constants -----
+    setFloat(name: string, float: number) {
+        this.currentFBO.activeShader.setFloat(name, float);
+    }
+    setVec2(name: string, vec2: BABYLON.Vector2) {
+        this.currentFBO.activeShader.setVector2(name, vec2);
+    }
+    setVec3(name: string, vec3: BABYLON.Vector3) {
+        this.currentFBO.activeShader.setVector3(name, vec3);
+    }
+    setVec4(name: string, vec4: BABYLON.Vector4) {
+        this.currentFBO.activeShader.setVector4(name, vec4);
+    }
+    setTexture(name: string, texture: BABYLON.BaseTexture) {
+        this.currentFBO.activeShader.setTexture(name, texture);
+    }
+
+    // ----- Render -----
+    render() {
+        this.currentFBO.render();
+        this.current = !this.current;
+        this.currentFBO = (this.current ? this.FBOA : this.FBOB);
+    }
+
+    // ----- Get active/inactive material -----
+    getActiveMat(): BABYLON.StandardMaterial {
+        return (this.current ? this.FBOA_mat : this.FBOB_mat);
+    }
+    getInactiveMat(): BABYLON.StandardMaterial {
+        return (!this.current ? this.FBOA_mat : this.FBOB_mat);
+    }
+
+    // ----- Get active/inactive texture -----
+    getActiveTex(): BABYLON.RenderTargetTexture {
+        return this.currentFBO.texture;
+    }
+    getInactiveTex(): BABYLON.RenderTargetTexture {
+        return (!this.current ? this.FBOA.texture : this.FBOB.texture);
+    }
 }

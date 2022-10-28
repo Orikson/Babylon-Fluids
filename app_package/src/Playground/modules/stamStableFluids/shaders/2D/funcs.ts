@@ -23,11 +23,14 @@ export function setup() {
     //  delta t (timestep) -> dt
     //  resolution of texture -> res
     void advect(vec2 coords, out vec4 xNew) {
-        vec2 pos = coords - dt * (res.x / res.y) * texture(velTex, coords).xy;
-        vec4 xL = texture(qntTex, pos - vec2(delx, 0));
-        vec4 xR = texture(qntTex, pos + vec2(delx, 0));
-        vec4 xB = texture(qntTex, pos - vec2(0, dely));
-        vec4 xT = texture(qntTex, pos + vec2(0, dely));
+        float delx = 1. / res.x;
+        float dely = 1. / res.y;
+
+        vec2 pos = coords - dt * (res.x / res.y) * texture2D_CTB(velTex, coords).xy;
+        vec4 xL = texture2D_CTB(qntTex, pos - vec2(delx, 0.));
+        vec4 xR = texture2D_CTB(qntTex, pos + vec2(delx, 0.));
+        vec4 xB = texture2D_CTB(qntTex, pos - vec2(0., dely));
+        vec4 xT = texture2D_CTB(qntTex, pos + vec2(0., dely));
         
         xNew = mix(mix(xL, xR, 0.5), mix(xB, xT, 0.5), 0.5);
     }
@@ -43,9 +46,12 @@ export function setup() {
     */
 
     void diffusion(vec2 coords, out vec4 xNew) {
+        float delx = 1. / res.x;
+        float dely = 1. / res.y;
+
         // must iterate outside of the shader ~20 times for accuracy
         float alpha = delx * delx / (VISCOSITY * dt);
-        float rbeta = 1 / (4 + alpha);
+        float rbeta = 1. / (4. + alpha);
         jacobi(coords, xNew, alpha, rbeta, velTex, velTex);
     }
     `;
@@ -57,8 +63,8 @@ export function setup() {
     
         vec2 F = relMmt * FORCEMULT;
     
-        force = vec4(F*1/distance(coords, orgPos), 0, 0);
-        //force = vec4(F*exp(pow(distance(coords, orgPos),2) / r) * dt, 0, 0);
+        force = vec4(F*1./distance(coords, orgPos), 0., 0.);
+        //force = vec4(F*exp(pow(distance(coords, orgPos),2.) / r) * dt, 0., 0.);
     }
     `;
 }

@@ -11,23 +11,23 @@ export function setup() {
     #include<stam2D_advectionFuncs>
 
     void main(void) {
-        vec4 force = vec4(0);
-        if (mDown != 0) {
+        vec4 force = vec4(0.);
+        if (mDown != 0.) {
             vec2 orgPos = mpos / res; // original mouse position rescaled
             vec2 relMmt = rel / res; // relative mouse motion rescaled
-            float dist = distance(uv, orgPos);
+            float dist = distance(vuv, orgPos);
             float a = 0.12;
             float val = (a / (dist + a)) - 0.5;
-            float frm = frame;
             if (dist < 0.15) {
-                force = vec4(val*cos(frm/200), val*sin(frm/100), val*sin(frm/300), 1);
+                force = vec4(val*cos(frame/200.), val*sin(frame/100.), val*sin(frame/300.), 1.);
                 force = abs(force);
                 force *= 0.7;
             }
         }
-        advect(uv, gl_FragColor);
+        advect(vuv, gl_FragColor);
         gl_FragColor += force;
-        gl_FragColor *= 0.995;
+        gl_FragColor *= 0.975;
+        //gl_FragColor = vec4(1., 0., 0., 1.);
     }
     `;
 
@@ -41,7 +41,7 @@ export function setup() {
     #include<stam2D_diffusionFuncs>
 
     void main(void) {
-        diffusion(uv, gl_FragColor);
+        diffusion(vuv, gl_FragColor);
     }
     `;
 
@@ -54,7 +54,7 @@ export function setup() {
     #include<stam2D_math>
 
     void main(void) {
-        divergence(uv, gl_FragColor, velTex);
+        divergence(vuv, gl_FragColor, velTex);
     }
     `;
 
@@ -67,7 +67,7 @@ export function setup() {
     #include<stam2D_math>
 
     void main(void) {
-        divergence(uv, gl_FragColor, velTex);
+        divergence(vuv, gl_FragColor, velTex);
     }
     `;
 
@@ -80,11 +80,11 @@ export function setup() {
     #include<stam2D_forceFuncs>
 
     void main(void) {
-        vec4 temp = vec4(0);
-        if (mDown != 0) {
-            applyForce(uv, temp, 0.5);
+        vec4 temp = vec4(0.);
+        if (mDown != 0.) {
+            applyForce(vuv, temp, 0.5);
         }
-        gl_FragColor = texture(velTex, uv) + temp;
+        gl_FragColor = texture2D(velTex, vuv) + temp;
     }
     `;
 
@@ -97,7 +97,7 @@ export function setup() {
     #include<stam2D_math>
 
     void main(void) {
-        gradient(uv, gl_FragColor, prsTex, velTex);
+        gradient(vuv, gl_FragColor, prsTex, velTex);
     }
     `;
 
@@ -110,10 +110,13 @@ export function setup() {
     #include<stam2D_math>
 
     void main() {
+        float delx = 1. / res.x;
+        float dely = 1. / res.y;
+
         // has to be iterated ~40 times on the cpu (texture has to be updated (ping ponged) each time)
         float alpha = -(delx*delx);
         float rbeta = 0.25;
-        jacobi(uv, gl_FragColor, alpha, rbeta, prsTex, tmpTex);
+        jacobi(vuv, gl_FragColor, alpha, rbeta, prsTex, tmpTex);
     }
     `;
 
@@ -124,11 +127,13 @@ export function setup() {
     #include<stam2D_header>
     
     void main(void) {
-        vec4 v = texture(velTex, uv);
-        vec4 t = texture(tmpTex, uv);
-        vec4 p = texture(prsTex, uv);
-        vec4 q = texture(qntTex, uv);
-        gl_FragColor = vec4(q.xyz, 1);
+        vec4 v = texture2D(velTex, vuv);
+        vec4 t = texture2D(tmpTex, vuv);
+        vec4 p = texture2D(prsTex, vuv);
+        vec4 q = texture2D(qntTex, vuv);
+        gl_FragColor = vec4(q.xyz, 1.);
+        //gl_FragColor = vec4(v.xyz, 1.);
+        //gl_FragColor = vec4(0., 0., 1., 1.);
     }
     `;
 }
