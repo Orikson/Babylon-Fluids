@@ -362,11 +362,11 @@ export class StamStableFluids2D {
         this.engine.enableEffect(null);
     }
     renderLoneFBO(fbo: FBO.BabylonFBO, effect: BABYLON.EffectWrapper) {
-        fbo.rbind(effect);
+        //fbo.rbind(effect);
         fbo.render(effect);
     }
     renderDoubleFBO(fbo: FBO.PingPongFBO, effect: BABYLON.EffectWrapper) {
-        fbo.getActiveFBO().rbind(effect);
+        //fbo.getActiveFBO().rbind(effect);
         fbo.getActiveFBO().render(effect);
         fbo.toggle();
     }
