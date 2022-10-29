@@ -133,7 +133,7 @@ export function setup() {
         vec4 q = texture2D(qntTex, vuv);
         gl_FragColor = vec4(q.xyz, 1.);
         //gl_FragColor = vec4(v.xyz, 1.);
-        //gl_FragColor = vec4(0., 0., 1., 1.);
+        //gl_FragColor = vec4(vuv.x * cos(frame / 100.), vuv.y, 0., 1.);
     }
     `;
 }

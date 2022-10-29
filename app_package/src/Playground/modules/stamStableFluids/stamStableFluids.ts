@@ -8,9 +8,11 @@ import * as STAM2D_FUNCS from "./shaders/2D/funcs"
 import * as STAM2D_HEADERS from "./shaders/2D/headers"
 import * as STAM2D_MATH from "./shaders/2D/math"
 import * as STAM2D_STEPS from "./shaders/2D/steps"
+import * as EXAMPLE from "./shaders/example"
 
 // Util
 import * as UTIL from "../../utility/util"
+import * as FBO from "../../utility/fbo"
 
 /**
  * Uses Babylon's Vector3 class to compute Hadamard product (component wise vector multiplication)
@@ -24,7 +26,7 @@ export function hadamard(v1: BABYLON.Vector3, v2: BABYLON.Vector3) {
  * https://www.cs.cmu.edu/~kmcrane/Projects/GPUFluid/paper.pdf
  * Most interesting computation occurs in relevant shaders; this class merely manages the processing of this pipeline (such as the order of shaders, storage of textures, etc.)
  */
-export class StamStableFluids2D {
+export class OldStamStableFluids2D {
     // Babylon run-time objects
     scene: BABYLON.Scene;
     canvas: HTMLCanvasElement;
@@ -168,7 +170,7 @@ export class StamStableFluids2D {
      */
     update() {
         this.frame += 1;
-        this.dt = this.scene.getEngine().getDeltaTime() / 1000;
+        this.dt = 0.01;//this.scene.getEngine().getDeltaTime() / 1000;
         this.runTime += this.dt;
 
         let radius = 32;
@@ -272,6 +274,222 @@ export class StamStableFluids2D {
         // final kernel
         this.finalTex = new UTIL.PlaneFBO("final", dimensions, this.scene);
         this.finalTex.addShader(final_path, final_options);
+    }
+}
+
+export class StamStableFluids2D {
+    // ----- BABYLON -----
+    scene: BABYLON.Scene;
+    engine: BABYLON.Engine;
+    canvas: HTMLCanvasElement;
+
+    // ----- XR Enabled -----
+    xrEnabled: boolean;
+    xrObject: BABYLON.WebXRDefaultExperience;
+
+    // ----- FBOs -----
+    velFBO: FBO.PingPongFBO;
+    tmpFBO: FBO.BabylonFBO;
+    qntFBO: FBO.PingPongFBO;
+    prsFBO: FBO.PingPongFBO;
+    finalFBO: FBO.BabylonFBO;
+
+    // ----- Shaders -----
+    advStep: BABYLON.EffectWrapper;
+    frcStep: BABYLON.EffectWrapper;
+    difStep: BABYLON.EffectWrapper;
+    divStep: BABYLON.EffectWrapper;
+    prsStep: BABYLON.EffectWrapper;
+    grdStep: BABYLON.EffectWrapper;
+    finalStep: BABYLON.EffectWrapper;
+    
+    // ----- Cameras -----
+    cameraXR: BABYLON.WebXRCamera;
+    cameraFR: BABYLON.FreeCamera;
+
+    // ----- Objects ------
+    renderPlane: BABYLON.Mesh;
+    mat: BABYLON.StandardMaterial;
+
+    // ----- Variables -----
+    runTime: number;
+    dt: number;
+    frame: number;
+    resolution: BABYLON.Vector2;
+    mpos: BABYLON.Vector2;
+    relM: BABYLON.Vector2;
+    mDown: number;
+
+    // ----- Constructor -----
+    constructor(scene: BABYLON.Scene, canvas: HTMLCanvasElement, xr?: BABYLON.WebXRDefaultExperience) {
+        this.scene = scene;
+        this.engine = scene.getEngine();
+        this.canvas = canvas;
+
+        this.xrEnabled = xr != undefined;
+        if (xr != undefined) {
+            this.xrObject = xr;
+        }
+        
+        this.runTime = 0;
+        this.dt = 0;
+        this.frame = 0;
+        this.resolution = new BABYLON.Vector2(256, 256);
+        this.mpos = new BABYLON.Vector2(64, 64);
+        this.relM = new BABYLON.Vector2(0, 0);
+        this.mDown = 1;
+
+        this.load_shaders();
+        this.load_objects();
+    }
+
+    // ----- Intermediate Render Functions -----
+    updateShader(effect: BABYLON.EffectWrapper) {
+        // "frame", "dt", "res", "mpos", "rel", "mDown"
+        // "velTex", "tmpTex", "prsTex", "qntTex"
+        this.engine.enableEffect(effect._drawWrapper);
+        effect.effect.setFloat("frame", this.frame);
+        effect.effect.setFloat("dt", this.dt);
+        effect.effect.setFloat2("res", this.resolution.x, this.resolution.y);
+        effect.effect.setFloat2("mpos", this.mpos.x, this.mpos.y);
+        effect.effect.setFloat2("rel", this.relM.x, this.relM.y);
+        effect.effect.setFloat("mDown", this.mDown);
+        
+        effect.effect.setTexture("velTex", new BABYLON.ThinTexture(this.velFBO.getInactiveFBO().fbo.texture));
+        effect.effect.setTexture("tmpTex", new BABYLON.ThinTexture(this.tmpFBO.fbo.texture));
+        effect.effect.setTexture("prsTex", new BABYLON.ThinTexture(this.prsFBO.getInactiveFBO().fbo.texture));
+        effect.effect.setTexture("qntTex", new BABYLON.ThinTexture(this.qntFBO.getInactiveFBO().fbo.texture));
+        this.engine.enableEffect(null);
+    }
+    renderLoneFBO(fbo: FBO.BabylonFBO, effect: BABYLON.EffectWrapper) {
+        fbo.rbind(effect);
+        fbo.render(effect);
+    }
+    renderDoubleFBO(fbo: FBO.PingPongFBO, effect: BABYLON.EffectWrapper) {
+        fbo.getActiveFBO().rbind(effect);
+        fbo.getActiveFBO().render(effect);
+        fbo.toggle();
+    }
+
+    // ----- Update -----
+    update() {
+        this.dt = this.engine.getDeltaTime() / 1000;
+        this.runTime += this.dt;
+        this.frame += 1;
+
+        let radius = this.resolution.x/4;
+        let npos = new BABYLON.Vector2(this.resolution.x/2 + radius * Math.cos(this.runTime * 5), this.resolution.y/2 + radius * Math.sin(this.runTime * 5) * Math.cos(this.runTime * 3));
+        this.relM = npos.subtract(this.mpos);
+        this.mpos = npos;
+        
+        if (this.engine.areAllEffectsReady()) {
+            // advection step
+            this.updateShader(this.advStep);
+            this.renderDoubleFBO(this.qntFBO, this.advStep);
+
+            // force step
+            this.updateShader(this.frcStep);
+            this.renderDoubleFBO(this.velFBO, this.frcStep);
+
+            // diffusion step
+            for (let i = 0; i < 20; i ++) {
+                this.updateShader(this.difStep);
+                this.renderDoubleFBO(this.velFBO, this.difStep);
+            }
+
+            // divergence step
+            this.updateShader(this.divStep);
+            this.renderLoneFBO(this.tmpFBO, this.divStep);
+            
+            // pressure step
+            for (let i = 0; i < 40; i ++) {
+                this.updateShader(this.prsStep);
+                this.renderDoubleFBO(this.prsFBO, this.prsStep);
+            }
+
+            // gradient step
+            this.updateShader(this.grdStep);
+            this.renderDoubleFBO(this.velFBO, this.grdStep);
+
+            // final step
+            this.updateShader(this.finalStep);
+            this.renderLoneFBO(this.finalFBO, this.finalStep);
+        }
+    }
+
+    // ----- Load Scene Objects -----
+    load_objects() {
+        if (this.xrObject != undefined) {
+            this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
+            this.cameraXR.attachControl(this.canvas, true);
+        } else {
+            this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(0, 0, -7), this.scene);
+            this.cameraFR.setTarget(BABYLON.Vector3.Zero());
+            this.cameraFR.attachControl(this.canvas, true);
+        }
+
+        this.renderPlane = BABYLON.MeshBuilder.CreatePlane("render plane", { width: 5, height: 5 }, this.scene);
+        
+        this.mat = new BABYLON.StandardMaterial("mat", this.scene);
+		this.mat.emissiveTexture = new BABYLON.BaseTexture(this.engine, this.finalFBO.fbo.texture);
+        this.mat.emissiveTexture.updateSamplingMode(3);
+        this.mat.disableLighting = true;
+
+        this.renderPlane.material = this.mat;
+    }
+
+    // ----- Load Shaders -----
+    load_shaders() {
+        // the order is important for in-shader import order
+        STAM2D_HEADERS.setup();
+        STAM2D_FUNCS.setup();
+        STAM2D_MATH.setup();
+        STAM2D_STEPS.setup();
+
+        // setup kernels
+        const dimensions = { width: this.resolution.x, height: this.resolution.y };
+
+        this.velFBO = new FBO.PingPongFBO(this.scene, dimensions, this.canvas);
+        this.tmpFBO = new FBO.BabylonFBO(this.scene, dimensions, this.canvas);
+        this.qntFBO = new FBO.PingPongFBO(this.scene, dimensions, this.canvas);
+        this.prsFBO = new FBO.PingPongFBO(this.scene, dimensions, this.canvas);
+        
+        // setup shader paths
+        let advStep_path = { vertex: "stam2D_advectionStep",  fragment: "stam2D_advectionStep" };
+        let frcStep_path = { vertex: "stam2D_forceStep",      fragment: "stam2D_forceStep" };
+        let difStep_path = { vertex: "stam2D_diffusionStep",  fragment: "stam2D_diffusionStep" };
+        let divStep_path = { vertex: "stam2D_divergenceStep", fragment: "stam2D_divergenceStep" };
+        let prsStep_path = { vertex: "stam2D_pressureStep",   fragment: "stam2D_pressureStep" };
+        let grdStep_path = { vertex: "stam2D_gradientStep",   fragment: "stam2D_gradientStep" };
+        let final_path =   { vertex: "stam2D_finalStep",      fragment: "stam2D_finalStep" };
+
+        // setup shader options
+        let standardAttributes = ["position", "normal", "uv"];
+        let standardUniforms = [
+            "world", "worldView", "worldViewProjection", "view", "projection", 
+            "frame", "dt", "res", "mpos", "rel", "mDown", 
+        ];
+        let standardSamplers = ["velTex", "tmpTex", "prsTex", "qntTex"];
+
+        let advStep_options = { attributes: standardAttributes, uniforms: standardUniforms, samplers: standardSamplers };
+        let frcStep_options = { attributes: standardAttributes, uniforms: standardUniforms, samplers: standardSamplers };
+        let difStep_options = { attributes: standardAttributes, uniforms: standardUniforms, samplers: standardSamplers };
+        let divStep_options = { attributes: standardAttributes, uniforms: standardUniforms, samplers: standardSamplers };
+        let prsStep_options = { attributes: standardAttributes, uniforms: standardUniforms, samplers: standardSamplers };
+        let grdStep_options = { attributes: standardAttributes, uniforms: standardUniforms, samplers: standardSamplers };
+        let final_options =   { attributes: standardAttributes, uniforms: standardUniforms, samplers: standardSamplers };
+        
+        // setup shaders
+        this.frcStep = FBO.createEffect(this.engine, frcStep_path, frcStep_options);
+        this.difStep = FBO.createEffect(this.engine, difStep_path, difStep_options);
+        this.grdStep = FBO.createEffect(this.engine, grdStep_path, grdStep_options);
+        this.divStep = FBO.createEffect(this.engine, divStep_path, divStep_options);
+        this.advStep = FBO.createEffect(this.engine, advStep_path, advStep_options);
+        this.prsStep = FBO.createEffect(this.engine, prsStep_path, prsStep_options);
+        
+        // final kernel
+        this.finalFBO = new FBO.BabylonFBO(this.scene, dimensions, this.canvas);
+        this.finalStep = FBO.createEffect(this.engine, final_path, final_options);
     }
 }
 

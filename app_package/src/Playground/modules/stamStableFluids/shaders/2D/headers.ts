@@ -48,8 +48,8 @@ export function setup() {
     precision highp float;
     
     // attributes
-    attribute vec3 position;
-    attribute vec2 uv;
+    attribute vec2 position;
+    //attribute vec2 uv;
 
     // uniforms
     uniform mat4 worldViewProjection;
@@ -58,8 +58,9 @@ export function setup() {
     varying vec2 vuv;
 
     void main(void) {
-        vuv = uv;
-        gl_Position = worldViewProjection * vec4(position, 1.0);
+        //gl_Position = worldViewProjection * vec4(position, 1.0);
+        gl_Position = vec4(position, 0., 1.);
+        vuv = (position + 1.)/2.;
     }
     `
 }

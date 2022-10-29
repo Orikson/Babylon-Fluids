@@ -304,6 +304,7 @@ export class PlaneFBO {
     // ----- Scenes -----
     mainScene: BABYLON.Scene;
     renderScene: BABYLON.Scene;
+    renderSceneOptimizer: BABYLON.SceneOptimizer;
     
     // ----- Shader storage -----
     shaders: BABYLON.ShaderMaterial[];
@@ -325,6 +326,9 @@ export class PlaneFBO {
         // scenes
         this.mainScene = scene;
         this.renderScene = new BABYLON.Scene(this.mainScene.getEngine());
+
+        // optimizer
+        BABYLON.SceneOptimizer.OptimizeAsync(this.renderScene);
 
         // render objects
         let w = dimensions.width;
