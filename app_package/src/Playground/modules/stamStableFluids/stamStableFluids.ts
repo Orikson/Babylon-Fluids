@@ -429,12 +429,13 @@ export class StamStableFluids2D {
             this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
             this.cameraXR.attachControl(this.canvas, true);
         } else {
-            this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(0, 0, -7), this.scene);
+            this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(0, 0, -1), this.scene);
             this.cameraFR.setTarget(BABYLON.Vector3.Zero());
             this.cameraFR.attachControl(this.canvas, true);
         }
 
-        this.renderPlane = BABYLON.MeshBuilder.CreatePlane("render plane", { width: 5, height: 5 }, this.scene);
+        this.renderPlane = BABYLON.MeshBuilder.CreatePlane("render plane", { width: 0.5, height: 0.5 }, this.scene);
+        this.renderPlane.position = new BABYLON.Vector3(0, 0, 1);
         
         this.mat = new BABYLON.StandardMaterial("mat", this.scene);
 		this.mat.emissiveTexture = new BABYLON.BaseTexture(this.engine, this.finalFBO.fbo.texture);
