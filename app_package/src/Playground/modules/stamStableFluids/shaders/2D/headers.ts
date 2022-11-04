@@ -20,6 +20,7 @@ export function setup() {
     uniform vec2 rel;           // relative mouse movement (in pixels)
     uniform float mDown;        // if 0 mouse is up, else, mouse is down
 
+    uniform sampler2D textureSampler; // previous rendering
     uniform sampler2D velTex;   // velocity texture
     uniform sampler2D tmpTex;   // temporary texture
     uniform sampler2D prsTex;   // pressure texture

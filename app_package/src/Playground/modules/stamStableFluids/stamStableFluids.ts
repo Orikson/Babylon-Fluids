@@ -1,18 +1,24 @@
 // Babylon imports
-import * as BABYLON from "@babylonjs/core"
+import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
 
 // Shader imports
-import * as RENDER from "./shaders/render"
-import * as STAM2D_FUNCS from "./shaders/2D/funcs"
-import * as STAM2D_HEADERS from "./shaders/2D/headers"
-import * as STAM2D_MATH from "./shaders/2D/math"
-import * as STAM2D_STEPS from "./shaders/2D/steps"
-import * as EXAMPLE from "./shaders/example"
+import * as STAM2D_FUNCS from "./shaders/2D/funcs";
+import * as STAM2D_HEADERS from "./shaders/2D/headers";
+import * as STAM2D_MATH from "./shaders/2D/math";
+import * as STAM2D_STEPS from "./shaders/2D/steps";
+
+import * as RENDER from "./shaders/3D/render";
+import * as STAM3D_HEADERS from "./shaders/3D/headers";
+import * as STAM3D_STEPS from "./shaders/3D/steps";
+
+import * as EXAMPLE from "./shaders/example";
 
 // Util
-import * as UTIL from "../../utility/util"
-import * as FBO from "../../utility/fbo"
+import * as UTIL from "../../utility/util";
+import * as FBO from "../../utility/fbo";
+import * as FBO2 from "../../utility/fbo2"
+import { PI } from "../../utility/constants";
 
 /**
  * Uses Babylon's Vector3 class to compute Hadamard product (component wise vector multiplication)
@@ -22,7 +28,7 @@ export function hadamard(v1: BABYLON.Vector3, v2: BABYLON.Vector3) {
 }
 
 /**
- * Implements Stam's stable fluids algorithm from NVIDIA's GPU Gems 1, Chapter 35
+ * Implements Stam's stable fluids algorithm from NVIDIA's GPU Gems 1, Chapter 38
  * https://www.cs.cmu.edu/~kmcrane/Projects/GPUFluid/paper.pdf
  * Most interesting computation occurs in relevant shaders; this class merely manages the processing of this pipeline (such as the order of shaders, storage of textures, etc.)
  */
@@ -208,8 +214,6 @@ export class OldStamStableFluids2D {
     }
 
     load_shaderObjects() {
-        RENDER.setup2D();
-
         // the order is important for in-shader import order
         STAM2D_HEADERS.setup();
         STAM2D_FUNCS.setup();
@@ -362,8 +366,10 @@ export class StamStableFluids2D {
         this.engine.enableEffect(null);
     }
     renderLoneFBO(fbo: FBO.BabylonFBO, effect: BABYLON.EffectWrapper) {
-        //fbo.rbind(effect);
+        fbo.bind();
+        this.engine.clear(new BABYLON.Color4(1, 1, 1, 1), true, true);
         fbo.render(effect);
+        fbo.unbind();
     }
     renderDoubleFBO(fbo: FBO.PingPongFBO, effect: BABYLON.EffectWrapper) {
         //fbo.getActiveFBO().rbind(effect);
@@ -500,5 +506,189 @@ export class StamStableFluids2D {
  * Most interesting computation occurs in relevant shaders; this class merely manages the processing of this pipeline (such as the order of shaders, storage of textures, etc.)
  */
 export class StamStableFluids3D {
+    // ----- BABYLON -----
+    scene: BABYLON.Scene;
+    engine: BABYLON.Engine;
+    canvas: HTMLCanvasElement;
 
+    // ----- XR Enabled -----
+    xrEnabled: boolean;
+    xrObject: BABYLON.WebXRDefaultExperience;
+
+    // ----- Variables -----
+    runTime: number;
+    dt: number;
+    frame: number;
+
+    // ----- Objects -----
+    box: BABYLON.Mesh;
+    boxSize: BABYLON.Vector3;
+
+    // ----- Cameras -----
+    cameraXR: BABYLON.WebXRCamera;
+    cameraFR: BABYLON.ArcRotateCamera;//BABYLON.FreeCamera;
+
+    // ----- Shaders -----
+    renderMaterial: BABYLON.ShaderMaterial;
+    renderTarget: BABYLON.RenderTargetTexture;
+    finalPass: BABYLON.PostProcess;
+    
+    // levelset
+    sampleFBO: FBO2.FBO_3D;
+    sampleResolution: BABYLON.Vector3;
+    sampleShader: BABYLON.EffectWrapper;
+
+    // gradient
+    gradientFBO: FBO2.FBO_3D;
+
+    // ----- Shader renderer -----
+    renderer: BABYLON.EffectRenderer;
+
+    // ----- Constructor -----
+    constructor(scene: BABYLON.Scene, canvas: HTMLCanvasElement, xr?: BABYLON.WebXRDefaultExperience) {
+        this.scene = scene;
+        this.engine = scene.getEngine();
+        this.canvas = canvas;
+
+        this.xrEnabled = xr != undefined;
+        if (xr != undefined) {
+            this.xrObject = xr;
+        }
+
+        this.dt = 0;
+        this.runTime = 0;
+        this.frame = 0;
+
+        this.renderer = new BABYLON.EffectRenderer(this.engine);
+
+        this.boxSize = new BABYLON.Vector3(2, 2, 4);
+        this.sampleResolution = new BABYLON.Vector3(128, 256, 128);
+
+        this.load_shaders();
+        this.load_objects();
+    }
+
+    // ----- Update -----
+    updateEffect(effect: BABYLON.EffectWrapper) {
+        this.engine.enableEffect(effect._drawWrapper);
+
+        effect.effect.setFloat("frame", this.frame);
+        effect.effect.setFloat("dt", this.dt);
+        // skipping mpos, rel, mDown
+        effect.effect.setVector3("bbPos", this.box.position);
+        effect.effect.setVector3("bbDim", this.boxSize);
+        effect.effect.setVector4("bbRot", this.box.rotationQuaternion!);
+        effect.effect.setVector3("bbRes", this.sampleResolution);
+        
+        this.engine.enableEffect(null);
+    }
+
+    update() {
+        this.frame += 1;
+        this.dt = this.engine.getDeltaTime();
+        this.runTime += this.dt;
+
+        if (this.engine.areAllEffectsReady()) {
+            this.updateEffect(this.sampleShader);
+            this.sampleFBO.render(this.sampleShader, this.renderer);
+        }
+        
+        this.renderMaterial.setVector3("bbPos", this.box.position);
+        this.renderMaterial.setVector3("bbDim", this.boxSize);
+        this.renderMaterial.setVector4("bbRot", new BABYLON.Vector4(this.box.rotationQuaternion!._x, this.box.rotationQuaternion!._y, this.box.rotationQuaternion!._z, this.box.rotationQuaternion!._w));
+        this.renderMaterial.setVector3("bbRes", this.sampleResolution);
+        this.renderMaterial.setTexture("sampleSampler", new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture));
+        this.renderMaterial.setVector3("cameraPosition", (this.xrObject != undefined ? this.cameraXR.position : this.cameraFR.position));
+    }
+
+    // ----- Setup -----
+    load_objects() {
+        if (this.xrObject != undefined) {
+            this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
+            this.cameraXR.attachControl(this.canvas, true);
+        } else {
+            //this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(6, 3, 3), this.scene);
+            this.cameraFR = new BABYLON.ArcRotateCamera("camera 1", 0, PI / 2, 6, BABYLON.Vector3.Zero(), this.scene);
+            this.cameraFR.setTarget(BABYLON.Vector3.Zero());
+            this.cameraFR.attachControl(this.canvas, true);
+        }
+
+        this.box = BABYLON.MeshBuilder.CreateBox("container", { width: this.boxSize.x, height: this.boxSize.y, depth: this.boxSize.z }, this.scene);
+        this.box.rotationQuaternion = new BABYLON.Quaternion(0, 0, 0, 1);
+        this.renderTarget.setMaterialForRendering(this.box, this.renderMaterial);
+        this.renderTarget.renderList!.push(this.box);
+
+        // debug material
+        //this.box.material = this.renderMaterial;
+
+        // ----- DEBUG PLANE -----
+        var tmpplane = BABYLON.MeshBuilder.CreatePlane("tmp", {width: 4, height: 1}, this.scene);
+        var mat = new BABYLON.StandardMaterial("tmp", this.scene);
+        mat.emissiveTexture = new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture);
+        mat.disableLighting = true;
+        tmpplane.material = mat;
+        tmpplane.position = new BABYLON.Vector3(0, 0, 5);
+
+        // ----- Post Process -----
+        //var imagePass = new BABYLON.PassPostProcess("imagePass", 1.0, (this.xrObject != undefined ? this.cameraXR : this.cameraFR), BABYLON.Texture.NEAREST_SAMPLINGMODE, this.engine);
+        this.finalPass = new BABYLON.PostProcess(
+            "final", // read name
+            "final", // shader name
+            [
+                "world", "worldView", "worldViewProjection", "view", "projection",
+                "frame", "dt", "mpos", "rel", "mDown", "bbPos", "bbDim", "bbRot", "bbRes", "renderRes"
+            ], // uniforms
+            ["depthSampler"], // samplers,
+            1.0, // options
+            (this.xrObject != undefined ? this.cameraXR : this.cameraFR), // camera
+            BABYLON.Texture.TRILINEAR_SAMPLINGMODE, // sampling mode
+            this.engine, // engine
+            true,
+            undefined,
+            BABYLON.Constants.TEXTURETYPE_FLOAT
+        );
+        this.finalPass.onApply = (effect) => {
+            // update the caustic texture with what we just rendered.
+            effect.setFloat("renderRes", 1.0 / this.renderTarget.getSize().width)
+            effect.setTexture("depthSampler", this.renderTarget);
+        };
+    }
+    load_shaders() {
+        STAM3D_HEADERS.setup();
+        STAM3D_STEPS.setup();
+        RENDER.setup3D();
+
+        let standardAttributes = ["position", "normal", "uv"];
+        let standardUniforms = [
+            "world", "worldView", "worldViewProjection", "view", "projection",
+            "frame", "dt", "mpos", "rel", "mDown", "bbPos", "bbDim", "bbRot", "bbRes"
+        ];
+        let standardSamplers = ["velTex", "tmpTex", "prsTex", "qntTex"];
+
+        this.renderMaterial = new BABYLON.ShaderMaterial("render", this.scene, { vertex: "renderDepth", fragment: "renderDepth" },
+            {
+                attributes: standardAttributes,
+                uniforms: standardUniforms.concat(["cameraPosition"])
+            }
+        );
+
+        this.renderTarget = new BABYLON.RenderTargetTexture("renderTarget", 1024, this.scene, false, undefined, BABYLON.Constants.TEXTURETYPE_FLOAT, false, undefined, undefined, undefined, undefined, BABYLON.Constants.TEXTUREFORMAT_RGBA);
+        this.scene.customRenderTargets.push(this.renderTarget);
+
+        this.sampleFBO = new FBO2.FBO_3D(this.scene, { width: this.sampleResolution.x, height: this.sampleResolution.y, layers: this.sampleResolution.z }, {
+            generateMipMaps: false,
+            type: BABYLON.Constants.TEXTURETYPE_FLOAT,
+            format: BABYLON.Constants.TEXTUREFORMAT_RGBA,
+            samplingMode: BABYLON.Constants.TEXTURE_TRILINEAR_SAMPLINGMODE
+        });
+
+        this.sampleShader = FBO.createEffect(this.engine, {
+            vertex: "sample", 
+            fragment: "sample"
+        }, {
+            attributes: standardAttributes,
+            uniforms: standardUniforms,
+            samplers: standardSamplers
+        });
+    }
 }
