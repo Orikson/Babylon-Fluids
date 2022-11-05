@@ -14,7 +14,7 @@ export class SceneObjects {
     xrObject: BABYLON.WebXRDefaultExperience;
 
     // scene objects
-    stam: MODULES.StamStableFluids2D;
+    stam: MODULES.StamStableFluids3D;
 
     constructor(scene: BABYLON.Scene, canvas: HTMLCanvasElement, xr?: BABYLON.WebXRDefaultExperience) {
         this.scene = scene;
@@ -34,7 +34,7 @@ export class SceneObjects {
     }
 
     load_sceneObjects() {
-        this.stam = new MODULES.StamStableFluids2D(this.scene, this.canvas, this.xrObject);
+        this.stam = new MODULES.StamStableFluids3D(this.scene, this.canvas, this.xrObject);
     }
 
     load_xrFeatures() {

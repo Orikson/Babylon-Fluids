@@ -532,6 +532,7 @@ export class StamStableFluids3D {
     // ----- Shaders -----
     renderMaterial: BABYLON.ShaderMaterial;
     renderTarget: BABYLON.RenderTargetTexture;
+    multiRenderTarget: BABYLON.MultiRenderTarget;
     finalPass: BABYLON.PostProcess;
     
     // levelset
@@ -616,8 +617,10 @@ export class StamStableFluids3D {
 
         this.box = BABYLON.MeshBuilder.CreateBox("container", { width: this.boxSize.x, height: this.boxSize.y, depth: this.boxSize.z }, this.scene);
         this.box.rotationQuaternion = new BABYLON.Quaternion(0, 0, 0, 1);
-        this.renderTarget.setMaterialForRendering(this.box, this.renderMaterial);
-        this.renderTarget.renderList!.push(this.box);
+        //this.renderTarget.setMaterialForRendering(this.box, this.renderMaterial);
+        //this.renderTarget.renderList!.push(this.box);
+        this.multiRenderTarget.setMaterialForRendering(this.box, this.renderMaterial);
+        this.multiRenderTarget.renderList!.push(this.box);
 
         // debug material
         //this.box.material = this.renderMaterial;
@@ -637,9 +640,9 @@ export class StamStableFluids3D {
             "final", // shader name
             [
                 "world", "worldView", "worldViewProjection", "view", "projection",
-                "frame", "dt", "mpos", "rel", "mDown", "bbPos", "bbDim", "bbRot", "bbRes", "renderRes"
+                "frame", "dt", "mpos", "rel", "mDown", "bbPos", "bbDim", "bbRot", "bbRes", "renderRes", "cameraPosition"
             ], // uniforms
-            ["depthSampler"], // samplers,
+            ["depthSampler", "gradientSampler"], // samplers,
             1.0, // options
             (this.xrObject != undefined ? this.cameraXR : this.cameraFR), // camera
             BABYLON.Texture.TRILINEAR_SAMPLINGMODE, // sampling mode
@@ -649,9 +652,15 @@ export class StamStableFluids3D {
             BABYLON.Constants.TEXTURETYPE_FLOAT
         );
         this.finalPass.onApply = (effect) => {
-            // update the caustic texture with what we just rendered.
-            effect.setFloat("renderRes", 1.0 / this.renderTarget.getSize().width)
-            effect.setTexture("depthSampler", this.renderTarget);
+            effect.setFloat("renderRes", 1.0 / this.multiRenderTarget.getSize().width)
+            effect.setTexture("depthSampler", this.multiRenderTarget.textures[0]);
+            effect.setTexture("gradientSampler", this.multiRenderTarget.textures[1]);
+            effect.setVector3("bbPos", this.box.position);
+            effect.setVector3("bbDim", this.boxSize);
+            effect.setVector4("bbRot", new BABYLON.Vector4(this.box.rotationQuaternion!._x, this.box.rotationQuaternion!._y, this.box.rotationQuaternion!._z, this.box.rotationQuaternion!._w));
+            effect.setVector3("bbRes", this.sampleResolution);
+            effect.setTexture("voxelSampler", new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture));
+            effect.setVector3("cameraPosition", (this.xrObject != undefined ? this.cameraXR.position : this.cameraFR.position));
         };
     }
     load_shaders() {
@@ -675,6 +684,13 @@ export class StamStableFluids3D {
 
         this.renderTarget = new BABYLON.RenderTargetTexture("renderTarget", 1024, this.scene, false, undefined, BABYLON.Constants.TEXTURETYPE_FLOAT, false, undefined, undefined, undefined, undefined, BABYLON.Constants.TEXTUREFORMAT_RGBA);
         this.scene.customRenderTargets.push(this.renderTarget);
+
+        this.multiRenderTarget = new BABYLON.MultiRenderTarget("multiRender", 1024, 2, this.scene, {
+            defaultType: BABYLON.Constants.TEXTURETYPE_FLOAT
+        });
+        this.scene.customRenderTargets.push(this.multiRenderTarget);
+        console.log(this.multiRenderTarget);
+        console.log(this.renderMaterial);
 
         this.sampleFBO = new FBO2.FBO_3D(this.scene, { width: this.sampleResolution.x, height: this.sampleResolution.y, layers: this.sampleResolution.z }, {
             generateMipMaps: false,

@@ -45,23 +45,66 @@ export function setup3D() {
     `
     
     BABYLON.Effect.ShadersStore["renderDepthVertexShader"] = `
-    #include<renderVertex>
-    `;
-    BABYLON.Effect.ShadersStore["renderDepthFragmentShader"] = `
+    #version 300 es
     precision highp float;
+
+    // Attributes
+    in vec3 position;
+    in vec3 normal;
+    in vec2 uv;
+
+    // Uniforms
+    uniform mat4 worldViewProjection;
     
-    #include<stam3D_header>
+    // bounding box
+    out vec3 bbPosition;
+    out vec3 bbWorldSize;
+    out vec4 bbQuaternion;
+    out vec3 bbResolution;
+
+    // uniforms
+    uniform vec3 bbPos;
+    uniform vec3 bbDim;
+    uniform vec4 bbRot;
+    uniform vec3 bbRes;
 
     // Varying
-    varying vec3 Position;
-    varying vec3 Normal;
-    varying vec2 UV;
+    out vec3 Position;
+    out vec3 Normal;
+    out vec2 UV;
+
+    void main(void) {
+        gl_Position = worldViewProjection * vec4(position, 1.0);
+        
+        Position = position;
+        Normal = normal;
+        UV = uv;
+
+        bbPosition = bbPos;
+        bbWorldSize = bbDim;
+        bbQuaternion = bbRot;
+        bbResolution = bbRes;
+    }
+    `;
+    BABYLON.Effect.ShadersStore["renderDepthFragmentShader"] = `
+    #version 300 es
+    precision highp float;
+
+    //layout(location = 0) out highp vec4 glFragData[2];
+    out vec4 glFragData[2];
+    
+    //layout (location = 0) out vec4 glFragPos;
+    //layout (location = 1) out vec4 glFragNor;
+
+    #include<stam3D_300es_header>
+
+    // Varying
+    in vec3 Position;
+    in vec3 Normal;
+    in vec2 UV;
 
     // Refs
     uniform vec3 cameraPosition;
-
-    // Last frame
-    //uniform sampler2D textureSampler;
 
     // Texture
     uniform sampler2D sampleSampler;
@@ -70,9 +113,8 @@ export function setup3D() {
         vec4 samp = vec4(1., 1., 1., 1.);
 
         vec3 dir = normalize(Position - cameraPosition);
-        float i = 0.;
-        while (true) {
-            i += 0.1;
+        
+        for (float i = 0.1; i < 25.0; i += 0.1) {
             vec3 pos = dir * i / 5. + Position;
             samp = texture3D_CTB_BB(sampleSampler, pos, bbResolution, bbPosition, bbWorldSize, bbQuaternion);
             //samp = texture3D_rndC_BB(sampleSampler, pos, bbResolution, bbPosition, bbWorldSize, bbQuaternion);
@@ -84,9 +126,24 @@ export function setup3D() {
             if (samp.w == 1.) {
                 // out of bounds
                 discard;
-            } else if (samp.w >= 0.) {
+            } else if (samp.w >= -0.9 && samp.w <= 0.9) {
                 // in volume
-                gl_FragColor = vec4(pos, 1.);
+                
+                // [1] is normal
+                float deltaD = 0.05;
+                float spl = texture3D_CTB_BB(sampleSampler, pos - vec3(deltaD, 0., 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spr = texture3D_CTB_BB(sampleSampler, pos + vec3(deltaD, 0., 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spb = texture3D_CTB_BB(sampleSampler, pos - vec3(0., deltaD, 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spt = texture3D_CTB_BB(sampleSampler, pos + vec3(0., deltaD, 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spp = texture3D_CTB_BB(sampleSampler, pos - vec3(0., 0., deltaD), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spf = texture3D_CTB_BB(sampleSampler, pos + vec3(0., 0., deltaD), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+
+                vec3 grad = -normalize(vec3(spr - spl, spt - spb, spf - spp));
+
+                // [0] is position
+                glFragData[0] = vec4(pos, 1.);
+
+                glFragData[1] = vec4(grad, 1.);
                 return;
             } else {
                 // out of volume within bounds
@@ -132,6 +189,7 @@ export function setup3D() {
 
     // Texture
     uniform sampler2D depthSampler;
+    uniform sampler2D gradientSampler;
     uniform sampler2D voxelSampler;
 
     vec3 bts(sampler2D x, vec2 P, float resolution) {
@@ -155,7 +213,8 @@ export function setup3D() {
         if (last == vec4(0., 0., 0., 1.)) {
             vec2 absoluteUV = floor(vUV / renderRes) * renderRes;
 
-            /* // Central forwarding gradient
+            /* -----
+            // Central forwarding gradient
             vec4 pc = texture2D(depthSampler, absoluteUV);
             vec4 pl = texture2D(depthSampler, absoluteUV - 1.*vec2(renderRes, 0.));
             vec4 pr = texture2D(depthSampler, absoluteUV + 1.*vec2(renderRes, 0.));
@@ -167,7 +226,7 @@ export function setup3D() {
             vec3 norm = normalize(cross(dx, dy));
             */
             
-            
+            /* ------
             // Diagonal forwarding gradient
             vec4 pc = texture2D(depthSampler, absoluteUV);
             vec4 pbr = texture2D(depthSampler, absoluteUV + 1.*vec2(renderRes, renderRes));
@@ -178,8 +237,12 @@ export function setup3D() {
             vec3 dy = (pr - pb).xyz;
             vec3 norm = normalize(cross(dx, dy));
             gl_FragColor = vec4(norm, 1.);
+            */
+            
+            vec4 pc = texture2D(depthSampler, absoluteUV);
+            vec3 norm = texture2D(gradientSampler, absoluteUV).xyz;
 
-            /*
+            /* -----
             // Tricubic filtering diagonal forwarding gradient
             // from position we need to convert to UV coordinates
             // from UV coordinates we Tricubic sample the texture to get 
@@ -195,7 +258,6 @@ export function setup3D() {
             
             vec2 diff = (vUV - absoluteUV) / renderRes;
             
-            /**
             vec3 vLightPosition = vec3(5,20,10);
             vec3 vPosition = pc.xyz;
             vec3 vNormal = norm;
@@ -215,10 +277,9 @@ export function setup3D() {
             // Specular
             vec3 angleW = normalize(viewDirectionW + lightVectorW);
             float specComp = max(0., dot(vNormalW, angleW));
-            specComp = pow(specComp, max(1., 64.)) * 2.;
+            specComp = pow(specComp, max(1., 64.));
             
             gl_FragColor = vec4(color * ndl + vec3(specComp), 1.);
-            */
         } else {
             gl_FragColor = last;
         }

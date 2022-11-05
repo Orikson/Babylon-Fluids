@@ -1,4 +1,5 @@
 import * as BABYLON from "@babylonjs/core";
+import { IMultiRenderTargetOptions } from "@babylonjs/core/Materials/Textures/multiRenderTarget";
 import "@babylonjs/loaders";
 
 // 2D FBO
@@ -40,5 +41,27 @@ export class FBO_3D {
     // ----- Renderer -----
     render(effect: BABYLON.EffectWrapper, renderer: BABYLON.EffectRenderer) {
         this.fbo.render(effect, renderer);
+    }
+}
+
+export class Multi_FBO {
+    // ----- Babylon -----
+    scene: BABYLON.Scene;
+    engine: BABYLON.Engine;
+
+    // ----- FBO -----
+    fbo: BABYLON.RenderTargetWrapper;
+
+    // ----- Constructor -----
+    constructor(scene: BABYLON.Scene, dimensions: { width: number, height: number }, options: IMultiRenderTargetOptions) {
+        this.scene = scene;
+        this.engine = scene.getEngine();
+
+        this.fbo = this.engine.createMultipleRenderTarget(dimensions, options, true);
+    }
+
+    // ----- Renderer -----
+    render(effect: BABYLON.EffectWrapper, renderer: BABYLON.EffectRenderer) {
+        renderer.render(effect, this.fbo);
     }
 }
