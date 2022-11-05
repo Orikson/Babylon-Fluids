@@ -114,7 +114,7 @@ export function setup3D() {
 
         vec3 dir = normalize(Position - cameraPosition);
         
-        for (float i = 0.1; i < 25.0; i += 0.1) {
+        for (float i = 0.1; i < 25.0; i += 0.01) {
             vec3 pos = dir * i / 5. + Position;
             samp = texture3D_CTB_BB(sampleSampler, pos, bbResolution, bbPosition, bbWorldSize, bbQuaternion);
             //samp = texture3D_rndC_BB(sampleSampler, pos, bbResolution, bbPosition, bbWorldSize, bbQuaternion);
@@ -269,7 +269,7 @@ export function setup3D() {
             
             // Light
             vec3 lightVectorW = normalize(vLightPosition - vPositionW);
-            vec3 color = abs(vPosition);
+            vec3 color = abs(vPosition * 4.);
             
             // diffuse
             float ndl = max(0., dot(vNormalW, lightVectorW));

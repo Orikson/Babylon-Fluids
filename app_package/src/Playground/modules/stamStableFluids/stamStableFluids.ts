@@ -524,6 +524,7 @@ export class StamStableFluids3D {
     // ----- Objects -----
     box: BABYLON.Mesh;
     boxSize: BABYLON.Vector3;
+    boxPosition: BABYLON.Vector3;
 
     // ----- Cameras -----
     cameraXR: BABYLON.WebXRCamera;
@@ -563,7 +564,8 @@ export class StamStableFluids3D {
 
         this.renderer = new BABYLON.EffectRenderer(this.engine);
 
-        this.boxSize = new BABYLON.Vector3(2, 2, 4);
+        this.boxSize = new BABYLON.Vector3(0.5, 0.5, 1);
+        this.boxPosition = new BABYLON.Vector3(0, 0, 0);
         this.sampleResolution = new BABYLON.Vector3(128, 256, 128);
 
         this.load_shaders();
@@ -616,6 +618,7 @@ export class StamStableFluids3D {
         }
 
         this.box = BABYLON.MeshBuilder.CreateBox("container", { width: this.boxSize.x, height: this.boxSize.y, depth: this.boxSize.z }, this.scene);
+        this.box.position = this.boxPosition;
         this.box.rotationQuaternion = new BABYLON.Quaternion(0, 0, 0, 1);
         //this.renderTarget.setMaterialForRendering(this.box, this.renderMaterial);
         //this.renderTarget.renderList!.push(this.box);
@@ -631,7 +634,7 @@ export class StamStableFluids3D {
         mat.emissiveTexture = new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture);
         mat.disableLighting = true;
         tmpplane.material = mat;
-        tmpplane.position = new BABYLON.Vector3(0, 0, 5);
+        tmpplane.position = new BABYLON.Vector3(0, 0, 7);
 
         // ----- Post Process -----
         //var imagePass = new BABYLON.PassPostProcess("imagePass", 1.0, (this.xrObject != undefined ? this.cameraXR : this.cameraFR), BABYLON.Texture.NEAREST_SAMPLINGMODE, this.engine);
