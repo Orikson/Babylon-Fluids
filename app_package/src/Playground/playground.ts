@@ -40,11 +40,11 @@ class Playground {
     }
 
     async load_scene() {
-        this.xrEnabled = await BABYLON.WebXRSessionManager.IsSessionSupportedAsync('immersive-ar');
+        this.xrEnabled = await BABYLON.WebXRSessionManager.IsSessionSupportedAsync('immersive-vr');
         if (this.xrEnabled) {
             this.xrObject = await this.scene.createDefaultXRExperienceAsync({
                 uiOptions: {
-                    sessionMode: "immersive-ar",
+                    sessionMode: "immersive-vr",
                     referenceSpaceType: "unbounded",
                     optionalFeatures: ["hit-test", "anchors"]
                 },

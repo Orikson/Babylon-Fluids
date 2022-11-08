@@ -153,6 +153,72 @@ export function setup3D() {
     }
     `;
 
+    BABYLON.Effect.ShadersStore["renderVertexShader"] = `
+    #include<renderVertex>
+    `
+    BABYLON.Effect.ShadersStore["renderFragmentShader"] = `
+    precision highp float;
+
+    #include<stam3D_header>
+
+    // Varying
+    varying vec3 Position;
+    varying vec3 Normal;
+    varying vec2 UV;
+
+    // Refs
+    uniform vec3 cameraPosition;
+
+    // Texture
+    uniform sampler2D sampleSampler;
+
+    void main(void) {
+        vec4 samp = vec4(1., 1., 1., 1.);
+
+        vec3 dir = normalize(Position - cameraPosition);
+        vec3 last = Position;
+
+        for (float i = 0.1; i < 25.0; i += 0.02) {
+            vec3 pos = dir * i / 5. + Position;
+            samp = texture3D_CTB_BB(sampleSampler, pos, bbResolution, bbPosition, bbWorldSize, bbQuaternion);
+            //samp = texture3D_rndC_BB(sampleSampler, pos, bbResolution, bbPosition, bbWorldSize, bbQuaternion);
+
+            // samp.w is flag value
+            // 0 - in volume
+            //-1 - out of volume within bounds
+            // 1 - out of bounds
+            if (samp.w == 1.) {
+                // out of bounds
+                discard;
+            } else if (samp.w == 0.) {//samp.w >= -0.9 && samp.w <= 0.9) {
+                // in volume
+                
+                // [1] is normal
+                float deltaD = 0.02;
+                float spl = texture3D_CTB_BB(sampleSampler, pos - vec3(deltaD, 0., 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spr = texture3D_CTB_BB(sampleSampler, pos + vec3(deltaD, 0., 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spb = texture3D_CTB_BB(sampleSampler, pos - vec3(0., deltaD, 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spt = texture3D_CTB_BB(sampleSampler, pos + vec3(0., deltaD, 0.), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spp = texture3D_CTB_BB(sampleSampler, pos - vec3(0., 0., deltaD), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+                float spf = texture3D_CTB_BB(sampleSampler, pos + vec3(0., 0., deltaD), bbResolution, bbPosition, bbWorldSize, bbQuaternion).w;
+
+                vec3 grad = -normalize(vec3(spr - spl, spt - spb, spf - spp));
+
+                // [0] is position
+                //glFragData[0] = vec4(last, 1.);
+
+                //glFragData[1] = vec4(grad, 1.);
+                gl_FragColor = vec4(grad, 1.);
+                return;
+            } else {
+                // out of volume within bounds
+                last = pos;
+            }
+        }
+        discard;
+    }
+    `
+
 
 
     /* // final post process vertex shader absolute pass

@@ -531,10 +531,12 @@ export class StamStableFluids3D {
     cameraFR: BABYLON.ArcRotateCamera;//BABYLON.FreeCamera;
 
     // ----- Shaders -----
-    renderMaterial: BABYLON.ShaderMaterial;
+    renderTargetMaterial: BABYLON.ShaderMaterial;
     renderTarget: BABYLON.RenderTargetTexture;
+    renderMaterial: BABYLON.ShaderMaterial;
     multiRenderTarget: BABYLON.MultiRenderTarget;
     finalPass: BABYLON.PostProcess;
+    finalMerge: BABYLON.RenderTargetTexture;
     
     // levelset
     sampleFBO: FBO2.FBO_3D;
@@ -551,6 +553,7 @@ export class StamStableFluids3D {
     constructor(scene: BABYLON.Scene, canvas: HTMLCanvasElement, xr?: BABYLON.WebXRDefaultExperience) {
         this.scene = scene;
         this.engine = scene.getEngine();
+        this.engine.setHardwareScalingLevel(1.5);
         this.canvas = canvas;
 
         this.xrEnabled = xr != undefined;
@@ -570,6 +573,17 @@ export class StamStableFluids3D {
 
         this.load_shaders();
         this.load_objects();
+
+        // optimizer
+        var options = new BABYLON.SceneOptimizerOptions();
+        var optimizer = new BABYLON.SceneOptimizer(this.scene, options);
+        optimizer.onNewOptimizationAppliedObservable.add(function (optim) {
+            console.log(optim.getDescription());
+        });
+
+        this.renderTargetMaterial.onCompiled = function() {
+            optimizer.start();
+        }
     }
 
     // ----- Update -----
@@ -603,6 +617,13 @@ export class StamStableFluids3D {
         this.renderMaterial.setVector3("bbRes", this.sampleResolution);
         this.renderMaterial.setTexture("sampleSampler", new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture));
         this.renderMaterial.setVector3("cameraPosition", (this.xrObject != undefined ? this.cameraXR.position : this.cameraFR.position));
+
+        this.renderTargetMaterial.setVector3("bbPos", this.box.position);
+        this.renderTargetMaterial.setVector3("bbDim", this.boxSize);
+        this.renderTargetMaterial.setVector4("bbRot", new BABYLON.Vector4(this.box.rotationQuaternion!._x, this.box.rotationQuaternion!._y, this.box.rotationQuaternion!._z, this.box.rotationQuaternion!._w));
+        this.renderTargetMaterial.setVector3("bbRes", this.sampleResolution);
+        this.renderTargetMaterial.setTexture("sampleSampler", new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture));
+        this.renderTargetMaterial.setVector3("cameraPosition", (this.xrObject != undefined ? this.cameraXR.position : this.cameraFR.position));
     }
 
     // ----- Setup -----
@@ -610,11 +631,13 @@ export class StamStableFluids3D {
         if (this.xrObject != undefined) {
             this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
             this.cameraXR.attachControl(this.canvas, true);
+            this.cameraXR.minZ = 0.01;
         } else {
             //this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(6, 3, 3), this.scene);
-            this.cameraFR = new BABYLON.ArcRotateCamera("camera 1", 0, PI / 2, 6, BABYLON.Vector3.Zero(), this.scene);
+            this.cameraFR = new BABYLON.ArcRotateCamera("camera 1", 0, PI / 2, 2, BABYLON.Vector3.Zero(), this.scene);
             this.cameraFR.setTarget(BABYLON.Vector3.Zero());
             this.cameraFR.attachControl(this.canvas, true);
+            this.cameraFR.minZ = 0.01;
         }
 
         this.box = BABYLON.MeshBuilder.CreateBox("container", { width: this.boxSize.x, height: this.boxSize.y, depth: this.boxSize.z }, this.scene);
@@ -622,11 +645,11 @@ export class StamStableFluids3D {
         this.box.rotationQuaternion = new BABYLON.Quaternion(0, 0, 0, 1);
         //this.renderTarget.setMaterialForRendering(this.box, this.renderMaterial);
         //this.renderTarget.renderList!.push(this.box);
-        this.multiRenderTarget.setMaterialForRendering(this.box, this.renderMaterial);
-        this.multiRenderTarget.renderList!.push(this.box);
+        //this.multiRenderTarget.setMaterialForRendering(this.box, this.renderMaterial);
+        //this.multiRenderTarget.renderList!.push(this.box);
 
         // debug material
-        //this.box.material = this.renderMaterial;
+        this.box.material = this.renderTargetMaterial;
 
         // ----- DEBUG PLANE -----
         var tmpplane = BABYLON.MeshBuilder.CreatePlane("tmp", {width: 4, height: 1}, this.scene);
@@ -638,7 +661,7 @@ export class StamStableFluids3D {
 
         // ----- Post Process -----
         //var imagePass = new BABYLON.PassPostProcess("imagePass", 1.0, (this.xrObject != undefined ? this.cameraXR : this.cameraFR), BABYLON.Texture.NEAREST_SAMPLINGMODE, this.engine);
-        this.finalPass = new BABYLON.PostProcess(
+        /*this.finalPass = new BABYLON.PostProcess(
             "final", // read name
             "final", // shader name
             [
@@ -664,7 +687,7 @@ export class StamStableFluids3D {
             effect.setVector3("bbRes", this.sampleResolution);
             effect.setTexture("voxelSampler", new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture));
             effect.setVector3("cameraPosition", (this.xrObject != undefined ? this.cameraXR.position : this.cameraFR.position));
-        };
+        };*/
     }
     load_shaders() {
         STAM3D_HEADERS.setup();
@@ -679,6 +702,13 @@ export class StamStableFluids3D {
         let standardSamplers = ["velTex", "tmpTex", "prsTex", "qntTex"];
 
         this.renderMaterial = new BABYLON.ShaderMaterial("render", this.scene, { vertex: "renderDepth", fragment: "renderDepth" },
+            {
+                attributes: standardAttributes,
+                uniforms: standardUniforms.concat(["cameraPosition"])
+            }
+        );
+
+        this.renderTargetMaterial = new BABYLON.ShaderMaterial("render", this.scene, { vertex: "render", fragment: "render" },
             {
                 attributes: standardAttributes,
                 uniforms: standardUniforms.concat(["cameraPosition"])
