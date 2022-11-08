@@ -528,7 +528,7 @@ export class StamStableFluids3D {
 
     // ----- Cameras -----
     cameraXR: BABYLON.WebXRCamera;
-    cameraFR: BABYLON.ArcRotateCamera;//BABYLON.FreeCamera;
+    cameraFR: BABYLON.FreeCamera;
 
     // ----- Shaders -----
     renderTargetMaterial: BABYLON.ShaderMaterial;
@@ -629,12 +629,12 @@ export class StamStableFluids3D {
     // ----- Setup -----
     load_objects() {
         if (this.xrObject != undefined) {
-            this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
-            this.cameraXR.attachControl(this.canvas, true);
-            this.cameraXR.minZ = 0.01;
+            //this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
+            //this.cameraXR.attachControl(this.canvas, true);
+            //this.cameraXR.minZ = 0.01;
         } else {
-            //this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(6, 3, 3), this.scene);
-            this.cameraFR = new BABYLON.ArcRotateCamera("camera 1", 0, PI / 2, 2, BABYLON.Vector3.Zero(), this.scene);
+            this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(0, 1, -1), this.scene);
+            //this.cameraFR = new BABYLON.ArcRotateCamera("camera 1", 0, PI / 2, 2, BABYLON.Vector3.Zero(), this.scene);
             this.cameraFR.setTarget(BABYLON.Vector3.Zero());
             this.cameraFR.attachControl(this.canvas, true);
             this.cameraFR.minZ = 0.01;

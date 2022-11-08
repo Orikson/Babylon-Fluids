@@ -45,8 +45,8 @@ class Playground {
             this.xrObject = await this.scene.createDefaultXRExperienceAsync({
                 uiOptions: {
                     sessionMode: "immersive-ar",
-                    referenceSpaceType: "unbounded",
-                    optionalFeatures: ["hit-test", "anchors"]
+                    //referenceSpaceType: "unbounded",
+                    //optionalFeatures: ["hit-test", "anchors"]
                 },
             });
         }
