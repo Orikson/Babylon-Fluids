@@ -557,6 +557,8 @@ export class StamStableFluids3D {
         this.canvas = canvas;
 
         this.xrEnabled = xr != undefined;
+        console.log(this.xrEnabled);
+        console.log(xr);
         if (xr != undefined) {
             this.xrObject = xr;
         }
@@ -616,22 +618,22 @@ export class StamStableFluids3D {
         this.renderMaterial.setVector4("bbRot", new BABYLON.Vector4(this.box.rotationQuaternion!._x, this.box.rotationQuaternion!._y, this.box.rotationQuaternion!._z, this.box.rotationQuaternion!._w));
         this.renderMaterial.setVector3("bbRes", this.sampleResolution);
         this.renderMaterial.setTexture("sampleSampler", new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture));
-        this.renderMaterial.setVector3("cameraPosition", (this.xrObject != undefined ? this.cameraXR.position : this.cameraFR.position));
+        this.renderMaterial.setVector3("cameraPosition", (this.xrEnabled ? this.cameraXR.position : this.cameraFR.position));
 
         this.renderTargetMaterial.setVector3("bbPos", this.box.position);
         this.renderTargetMaterial.setVector3("bbDim", this.boxSize);
         this.renderTargetMaterial.setVector4("bbRot", new BABYLON.Vector4(this.box.rotationQuaternion!._x, this.box.rotationQuaternion!._y, this.box.rotationQuaternion!._z, this.box.rotationQuaternion!._w));
         this.renderTargetMaterial.setVector3("bbRes", this.sampleResolution);
         this.renderTargetMaterial.setTexture("sampleSampler", new BABYLON.BaseTexture(this.engine, this.sampleFBO.fbo.fbo.texture));
-        this.renderTargetMaterial.setVector3("cameraPosition", (this.xrObject != undefined ? this.cameraXR.position : this.cameraFR.position));
+        this.renderTargetMaterial.setVector3("cameraPosition", (this.xrEnabled ? this.cameraXR.position : this.cameraFR.position));
     }
 
     // ----- Setup -----
     load_objects() {
-        if (this.xrObject != undefined) {
-            //this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
-            //this.cameraXR.attachControl(this.canvas, true);
-            //this.cameraXR.minZ = 0.01;
+        if (this.xrEnabled) {
+            this.cameraXR = new BABYLON.WebXRCamera("camera 1", this.scene, this.xrObject.baseExperience.sessionManager);
+            this.cameraXR.attachControl(this.canvas, true);
+            this.cameraXR.minZ = 0.01;
         } else {
             this.cameraFR = new BABYLON.FreeCamera("camera 1", new BABYLON.Vector3(0, 1, -1), this.scene);
             //this.cameraFR = new BABYLON.ArcRotateCamera("camera 1", 0, PI / 2, 2, BABYLON.Vector3.Zero(), this.scene);

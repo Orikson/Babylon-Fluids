@@ -38,6 +38,7 @@ export class SceneObjects {
     }
 
     load_xrFeatures() {
+        /*
         const fm = this.xrObject.baseExperience.featuresManager;
         const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, 'latest') as BABYLON.WebXRHitTest;
         const anchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest") as BABYLON.WebXRAnchorSystem;
@@ -68,6 +69,7 @@ export class SceneObjects {
         anchorSystem.onAnchorUpdatedObservable.add((anchor) => {
             // ... do what you want with the anchor after it was updated
         });
+        */
 
         /*
         // setup plane detector test

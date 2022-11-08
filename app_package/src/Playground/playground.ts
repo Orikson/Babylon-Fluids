@@ -15,6 +15,9 @@ class Playground {
     sessionManager: BABYLON.WebXRSessionManager;
     xrObject: BABYLON.WebXRDefaultExperience;
     xrReferenceSpace: XRReferenceSpace;
+    
+    // scene ready
+    ready: boolean;
 
     // scene objects
     objects: OBJECTS.SceneObjects;
@@ -27,16 +30,20 @@ class Playground {
         this.sessionManager = new BABYLON.WebXRSessionManager(this.scene);
         this.xrEnabled = false;
         
+        this.ready = false;
         this.load_scene();
-        this.objects = new OBJECTS.SceneObjects(this.scene, this.canvas, (this.xrEnabled ? this.xrObject : undefined));
     }
 
     render() {
-        this.scene.render();
+        if (this.ready) {
+            this.scene.render();
+        }
     }
 
     update() {
-        this.objects.update();
+        if (this.ready) {
+            this.objects.update();
+        }
     }
 
     async load_scene() {
@@ -45,11 +52,13 @@ class Playground {
             this.xrObject = await this.scene.createDefaultXRExperienceAsync({
                 uiOptions: {
                     sessionMode: "immersive-ar",
-                    //referenceSpaceType: "unbounded",
+                    referenceSpaceType: "unbounded",
                     //optionalFeatures: ["hit-test", "anchors"]
                 },
             });
         }
+        this.objects = new OBJECTS.SceneObjects(this.scene, this.canvas, (this.xrEnabled ? this.xrObject : undefined));
+        this.ready = true;
     }
 }
 
