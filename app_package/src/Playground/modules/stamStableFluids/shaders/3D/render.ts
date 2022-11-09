@@ -171,6 +171,7 @@ export function setup3D() {
 
     // Texture
     uniform sampler2D sampleSampler;
+    uniform sampler2D environmentSampler;
 
     void main(void) {
         vec4 samp = vec4(1., 1., 1., 1.);
