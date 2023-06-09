@@ -4,4 +4,6 @@ A program built in Babylon.js to render and simulate fluids in an Augmented Real
 
 Since moved to, and then finished at, the following Babylon.js playground; https://playground.babylonjs.com/#SKPYC3#39
 
+The associated GitHub pages page does NOT reflect the version above.
+
 See how the rendering works (third order texture filtering); https://playground.babylonjs.com/#7XYM60#22
